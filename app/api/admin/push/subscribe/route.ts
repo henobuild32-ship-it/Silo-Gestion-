@@ -7,6 +7,8 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 const subscriptionSchema = z.object({
   endpoint: z.string().url().max(2048),
+  // PushSubscription.toJSON() includes this standard field in Safari, iOS and Chromium.
+  expirationTime: z.number().nullable().optional(),
   keys: z.object({ p256dh: z.string().min(20).max(256), auth: z.string().min(8).max(128) }),
 }).strict();
 

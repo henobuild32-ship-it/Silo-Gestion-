@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Activity, Bell, BellOff, CalendarDays, ChartNoAxesCombined, ClipboardList, Coins, DoorOpen,
-  FileCheck2, LayoutDashboard, Menu, Settings2, ShieldCheck, Users, UsersRound,
+  FileCheck2, LayoutDashboard, LayoutGrid, Menu, Settings2, ShieldCheck, Users, UsersRound,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api/client";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
@@ -106,9 +106,6 @@ export function AdminShell({ children, title }: { children: React.ReactNode; tit
       return;
     }
 
-    if (Notification.permission === "denied") {
-      setPushMessage("Les notifications sont bloquées dans les réglages de ce navigateur."); return;
-    }
     const onIos = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const installed = window.matchMedia("(display-mode: standalone)").matches || ("standalone" in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
     if (onIos && !installed) {
@@ -123,6 +120,9 @@ export function AdminShell({ children, title }: { children: React.ReactNode; tit
           : "Les notifications Web Push ne sont pas prises en charge par cette version du navigateur.");
       return;
     }
+    if (Notification.permission === "denied") {
+      setPushMessage("Les notifications sont bloquées dans les réglages de ce navigateur."); return;
+    }
     if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
       setPushMessage("La clé publique Web Push manque dans la configuration du déploiement."); return;
     }
@@ -135,7 +135,9 @@ export function AdminShell({ children, title }: { children: React.ReactNode; tit
       const registration = await navigator.serviceWorker.ready;
       let subscription = await registration.pushManager.getSubscription();
       if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToArrayBuffer(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) });
-      await apiFetch("/api/admin/push/subscribe", { method: "POST", body: JSON.stringify(subscription) });
+      const serialized = subscription.toJSON();
+      if (!serialized.endpoint || !serialized.keys?.p256dh || !serialized.keys.auth) throw new Error("Le navigateur n’a pas fourni les clés de notification attendues.");
+      await apiFetch("/api/admin/push/subscribe", { method: "POST", body: JSON.stringify(serialized) });
       setPushEnabled(true); setPushMessage("Notifications activées sur cet appareil.");
       try {
         const result = await apiFetch<{ sent: number }>("/api/admin/push/test", { method: "POST" });
@@ -185,6 +187,7 @@ export function AdminShell({ children, title }: { children: React.ReactNode; tit
             const Icon = item.icon;
             return <Link key={item.href} href={item.href} className={pathname === item.href ? "active" : ""}><Icon size={19} /><span>{item.label === "Vue d’ensemble" ? "Accueil" : item.label === "Membres & ouvriers" ? "Membres" : item.label}</span></Link>;
           })}
+          <button type="button" className={`mobile-nav-menu ${menuOpen ? "active" : ""}`} onClick={() => setMenuOpen(true)} aria-label="Ouvrir tous les modules"><LayoutGrid size={19} /><span>Modules</span></button>
         </nav>
       </main>
     </div>

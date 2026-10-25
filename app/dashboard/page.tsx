@@ -62,10 +62,10 @@ export default function DashboardPage() {
           </div>
           <div className="divider" />
           <div className="panel-heading" style={{ marginBottom: 12 }}><h2>Présences · 30 derniers jours</h2><Activity size={17} color="#658775" /></div>
-          <div style={{ display: "flex", gap: 26, fontSize: 13 }}><div><strong style={{ fontSize: 21 }}>{data?.stats.presentLast30Days ?? (loading ? "…" : 0)}</strong><div className="field-hint">Présences</div></div><div><strong style={{ fontSize: 21 }}>{data?.stats.absentLast30Days ?? (loading ? "…" : 0)}</strong><div className="field-hint">Absences</div></div><div><strong style={{ fontSize: 21 }}>{data?.stats.visitors ?? (loading ? "…" : 0)}</strong><div className="field-hint">Visiteurs</div></div><div><strong style={{ fontSize: 21 }}>{data?.stats.leaders ?? (loading ? "…" : 0)}</strong><div className="field-hint">Responsables</div></div></div>
+          <div className="dashboard-stat-row"><div><strong>{data?.stats.presentLast30Days ?? (loading ? "…" : 0)}</strong><div className="field-hint">Présences</div></div><div><strong>{data?.stats.absentLast30Days ?? (loading ? "…" : 0)}</strong><div className="field-hint">Absences</div></div><div><strong>{data?.stats.visitors ?? (loading ? "…" : 0)}</strong><div className="field-hint">Visiteurs</div></div><div><strong>{data?.stats.leaders ?? (loading ? "…" : 0)}</strong><div className="field-hint">Responsables</div></div></div>
         </section>
       </div>
-      <div className="card panel" style={{ marginTop: 17, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18 }}>
+      <div className="card panel dashboard-note-card" style={{ marginTop: 17, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18 }}>
         <div><div className="panel-heading" style={{ justifyContent: "flex-start", marginBottom: 5 }}><UserRoundCog size={18} color="#56816c" /><h2>Une personne, une fiche officielle</h2></div><div className="field-hint">Les affectations sont reliées à un identifiant unique, même si l’ouvrier sert dans plusieurs départements.</div></div>
         <Link className="button secondary small" href="/admin/members">Consulter les fiches <ArrowRight size={14} /></Link>
       </div>

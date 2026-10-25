@@ -70,7 +70,7 @@ export default function RegistrationLinksPage() {
   return <AdminShell title="Inscriptions des ouvriers"><div className="admin-content">
     <div className="page-heading"><div><h1>Inscriptions des ouvriers</h1><p>Créez un lien sécurisé et transmettez-le aux ouvriers pour recueillir leurs informations.</p></div><div className="page-actions"><span className="badge active"><ShieldCheck size={13} /> Jetons aléatoires · stockage haché</span></div></div>
     {error && <div className="notice error" style={{ marginBottom: 16 }} role="alert">{error}<button onClick={() => setError("")} style={{ marginLeft: "auto", border: 0, background: "transparent", color: "inherit" }} aria-label="Fermer"><X size={16} /></button></div>}
-    <div className="dashboard-grid" style={{ gridTemplateColumns: "minmax(0,1.15fr) minmax(280px,.85fr)" }}>
+    <div className="dashboard-grid registration-link-grid">
       <section className="card panel">
         <div className="panel-heading"><div><h2>Générer un lien d’inscription</h2><div className="field-hint" style={{ marginTop: 4 }}>Le jeton en clair n’est affiché qu’à sa création.</div></div><span className="stat-icon"><Link2 size={18} /></span></div>
         <div className="form-grid">
