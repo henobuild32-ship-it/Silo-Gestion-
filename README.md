@@ -24,7 +24,7 @@ npx supabase link --project-ref llwzdaqsdfcltqkncjhl
 npx supabase db push
 ```
 
-La commande `link` demande le mot de passe de la base dans le terminal. Ne l’écrivez pas dans un fichier suivi par Git, une commande copiée dans un journal, ou une variable publique. Les migrations créent les treize départements, les données et les permissions de l’application. Les migrations 004 et 005 ajoutent les liens personnels de correction et les événements et justifications de présence. Pour appliquer ces deux mises à jour à la base déjà installée, exécutez une fois [`supabase/sql-editor-update.sql`](supabase/sql-editor-update.sql) dans l’éditeur SQL. Le fichier `sql-editor-setup.sql` est réservé à une installation neuve.
+La commande `link` demande le mot de passe de la base dans le terminal. Ne l’écrivez pas dans un fichier suivi par Git, une commande copiée dans un journal, ou une variable publique. Les migrations créent les treize départements, les données et les permissions de l’application. Pour mettre à jour une base déjà installée — notamment avec les demandes de correction, le pointage, les codes e-mail de réunion et le périmètre GPS — exécutez une fois [`supabase/sql-editor-update.sql`](supabase/sql-editor-update.sql) dans l’éditeur SQL. Le fichier `sql-editor-setup.sql` est réservé à une installation neuve.
 
 Pour tout appliquer depuis le tableau de bord Supabase, ouvrez **SQL Editor**, collez le contenu de [`supabase/sql-editor-setup.sql`](supabase/sql-editor-setup.sql), puis exécutez-le une seule fois dans un projet vierge. Le script regroupe les migrations et s’arrête si `public.profiles` existe déjà. L’exécution manuelle ne met pas à jour l’historique local du CLI; pour la suite, utilisez le même SQL Editor ou réparez l’historique des migrations avant de reprendre `supabase db push`.
 
@@ -42,8 +42,14 @@ Dans Vercel, importer le dépôt `henobuild32-ship-it/Silo-Gestion-`, renommer l
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Clé publique Web Push créée localement |
 | `VAPID_PRIVATE_KEY` | Clé privée Web Push (serveur uniquement, jamais `NEXT_PUBLIC_`) |
 | `VAPID_SUBJECT` | Adresse `mailto:` de contact ou URL HTTPS de l’application |
+| `SMTP_USER` | Adresse Gmail utilisée pour envoyer les codes de confirmation des réunions |
+| `SMTP_APP_PASSWORD` | Mot de passe d’application Gmail, pas le mot de passe habituel du compte |
+| `ATTENDANCE_OTP_SECRET` | Secret aléatoire serveur d’au moins 32 caractères pour protéger les codes OTP |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM` | Facultatifs ; par défaut Gmail SMTP sur le port 465 et l’adresse `SMTP_USER` |
 
 Redéployer après avoir enregistré les variables. Les clés VAPID sont générées automatiquement dans le `.env` local; recopier leurs valeurs dans les variables Vercel. Il n’est pas nécessaire de configurer `DATABASE_URL` pour l’application : les requêtes utilisent l’API Supabase. La clé serveur ne doit jamais recevoir le préfixe `NEXT_PUBLIC_`.
+
+Pour activer les confirmations de réunion, créer un mot de passe d’application depuis les paramètres du compte Gmail (la validation en deux étapes doit être active), puis définir `SMTP_USER`, `SMTP_APP_PASSWORD` et un `ATTENDANCE_OTP_SECRET` unique d’au moins 32 caractères dans Vercel. Ne pas envoyer ces secrets dans le dépôt ni dans une conversation. La confirmation exige le code envoyé à l’adresse déjà enregistrée et, pour confirmer une présence, une position GPS précise dans le rayon défini par l’administration. Un ouvrier qui refuse cette vérification et valide son identité par code est marqué absent; sans accès au code, l’administration doit inscrire l’absence manuellement.
 
 La page des présences conserve localement, pendant 30 jours maximum, la dernière liste autorisée et les pointages en attente dans IndexedDB. Ils sont envoyés quand la connexion revient et effacés à la déconnexion. Les appels API ne sont jamais mis en cache. Les notifications Web Push nécessitent une autorisation explicite sur chaque appareil et une connexion HTTPS. Elles fonctionnent dans Safari 16+ sur macOS Ventura 13+; sur iPhone/iPad, il faut iOS/iPadOS 16.4+ et ajouter l’application à l’écran d’accueil avant d’activer les notifications.
 

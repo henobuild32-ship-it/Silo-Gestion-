@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Activity, Check, Copy, Link2, MessageCircle, Printer, RefreshCw, WifiOff } from "lucide-react";
+import { Activity, Check, Copy, Link2, MapPin, MessageCircle, Printer, RefreshCw, WifiOff } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
 import { apiFetch } from "@/lib/api/client";
 import { PendingAttendance, queueAttendance, readAttendanceQueue, readAttendanceSnapshot, removeQueuedAttendance, saveAttendanceSnapshot } from "@/lib/offline-store";
@@ -9,7 +9,7 @@ import { PendingAttendance, queueAttendance, readAttendanceQueue, readAttendance
 type Department = { id: string; name: string };
 type Member = { id: string; member_number: string; nom: string; postnom: string; prenom: string; departments?: Department[] };
 type AttendanceStatus = "present" | "absent" | "justified";
-type Attendance = { id: string; event_date: string; event_name?: string; department_id: string; statut_presence: AttendanceStatus; justification?: string | null; self_confirmed_at?: string | null; member_name: string; department_name: string; recorded_by_name: string | null };
+type Attendance = { id: string; event_date: string; event_name?: string; department_id: string; statut_presence: AttendanceStatus; justification?: string | null; self_confirmed_at?: string | null; self_declined_at?: string | null; confirmation_latitude?: number | null; confirmation_longitude?: number | null; confirmation_accuracy_meters?: number | null; confirmation_distance_meters?: number | null; confirmation_location_at?: string | null; member_name: string; department_name: string; recorded_by_name: string | null };
 type Payload = { departments: Department[]; members: Member[]; rows: Attendance[] };
 type OfflineAttendanceCache = { data: Payload; permissions: string[]; role?: string };
 const eventOptions = ["Culte", "Prière des Ouvriers", "Culte du Mercredi soir"];
@@ -45,6 +45,9 @@ export default function AttendancePage() {
   const [meetingBusy, setMeetingBusy] = useState(false);
   const [meetingError, setMeetingError] = useState("");
   const [meetingNotice, setMeetingNotice] = useState("");
+  const [meetingCenter, setMeetingCenter] = useState<{ latitude: number; longitude: number; accuracy_meters: number } | null>(null);
+  const [meetingRadius, setMeetingRadius] = useState(90);
+  const [locatingAdmin, setLocatingAdmin] = useState(false);
   const syncLock = useRef(false);
 
   async function refreshQueue(id = userId) {
@@ -61,7 +64,20 @@ export default function AttendancePage() {
       ]);
       setData(result); setPermissions(me.permissions); setRole(me.role); setUserId(me.userId); setOffline(false);
       localStorage.setItem("silo-offline-user-id", me.userId);
-      await saveAttendanceSnapshot<OfflineAttendanceCache>(me.userId, { data: result, permissions: me.permissions, role: me.role }).catch(() => undefined);
+      const cacheRows = result.rows.map((row) => ({
+        id: row.id,
+        event_date: row.event_date,
+        event_name: row.event_name,
+        department_id: row.department_id,
+        statut_presence: row.statut_presence,
+        justification: row.justification,
+        self_confirmed_at: row.self_confirmed_at,
+        self_declined_at: row.self_declined_at,
+        member_name: row.member_name,
+        department_name: row.department_name,
+        recorded_by_name: row.recorded_by_name,
+      }));
+      await saveAttendanceSnapshot<OfflineAttendanceCache>(me.userId, { data: { ...result, rows: cacheRows }, permissions: me.permissions, role: me.role }).catch(() => undefined);
       await refreshQueue(me.userId);
     } catch (reason) {
       const localUserId = localStorage.getItem("silo-offline-user-id") ?? "";
@@ -212,20 +228,51 @@ export default function AttendancePage() {
   async function createMeetingConfirmationLink() {
     setMeetingError(""); setMeetingNotice(""); setMeetingLink(""); setMeetingBusy(true);
     try {
+      if (!meetingCenter) throw new Error("Enregistrez d’abord la position GPS précise du lieu de réunion.");
       const result = await apiFetch<{ url: string; attendee_count: number; expires_at: string }>("/api/admin/attendance/confirmations", {
         method: "POST",
-        body: JSON.stringify({ event_name: meetingName.trim(), event_date: eventDate, department_id: department || null }),
+        body: JSON.stringify({ event_name: meetingName.trim(), event_date: eventDate, department_id: department || null, center_latitude: meetingCenter.latitude, center_longitude: meetingCenter.longitude, center_accuracy_meters: meetingCenter.accuracy_meters, radius_meters: meetingRadius }),
       });
       setMeetingLink(result.url);
-      setMeetingNotice(`Lien créé pour ${result.attendee_count} pointage(s) « Présent ». Il expire le ${new Date(result.expires_at).toLocaleDateString("fr-FR")}.`);
+      setMeetingNotice(`Lien créé pour ${result.attendee_count} pointage(s) « Présent », dans un rayon de ${meetingRadius} m. Il expire le ${new Date(result.expires_at).toLocaleDateString("fr-FR")}.`);
     } catch (reason) {
       setMeetingError(reason instanceof Error ? reason.message : "Impossible de créer le lien de confirmation.");
     } finally { setMeetingBusy(false); }
   }
 
+  async function captureMeetingCenter() {
+    setMeetingError(""); setMeetingNotice(""); setMeetingLink("");
+    if (!navigator.geolocation) { setMeetingError("La géolocalisation n’est pas disponible sur cet appareil."); return; }
+    setLocatingAdmin(true);
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 20_000, maximumAge: 0 }));
+      const center = { latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy_meters: position.coords.accuracy };
+      if (!Number.isFinite(center.accuracy_meters) || center.accuracy_meters <= 0 || center.accuracy_meters > 30) throw new Error("La position du lieu n’est pas assez précise (30 m maximum). Activez la localisation précise et réessayez.");
+      setMeetingCenter(center);
+      setMeetingNotice("Position GPS actuelle enregistrée comme centre du périmètre pour ce lien.");
+    } catch (reason) {
+      const message = reason instanceof GeolocationPositionError && reason.code === reason.PERMISSION_DENIED
+        ? "Autorisez la localisation précise pour définir le lieu de réunion."
+        : reason instanceof Error ? reason.message : "Impossible d’obtenir la position GPS du lieu.";
+      setMeetingError(message);
+    } finally { setLocatingAdmin(false); }
+  }
+
   async function copyMeetingLink() {
     try { await navigator.clipboard.writeText(meetingLink); setMeetingNotice("Lien copié. Vous pouvez le partager aux ouvriers présents."); }
     catch { setMeetingError("La copie automatique est indisponible. Sélectionnez le lien et copiez-le manuellement."); }
+  }
+
+  async function markRefusalAbsent(row: Attendance) {
+    if (!window.confirm(`Marquer ${row.member_name} comme absent(e) pour « ${row.event_name || "Pointage quotidien"} » ? Cette action sera inscrite dans l’historique administratif.`)) return;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      await apiFetch("/api/admin/attendance", { method: "PATCH", body: JSON.stringify({ attendance_id: row.id }) });
+      setNotice(`${row.member_name} a été marqué(e) absent(e).`);
+      await load(department);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Impossible de marquer ce pointage absent.");
+    } finally { setBusy(false); }
   }
 
   const canWrite = role === "super_admin" || permissions.includes("attendance.write");
@@ -258,8 +305,8 @@ export default function AttendancePage() {
 
     {canWrite && <section className="card panel meeting-link-panel" style={{ marginTop: 17 }}>
       <button className="meeting-link-trigger" type="button" aria-expanded={showMeetingLink} onClick={() => { setShowMeetingLink((visible) => !visible); setMeetingError(""); if (!showMeetingLink) setMeetingName(customEvent.trim() || selectedEvents[0] || eventOptions[0]); }}><span><Link2 size={18} /><strong>Réunion — lien de confirmation</strong></span><span>{showMeetingLink ? "Fermer" : "Créer un lien court"}</span></button>
-      {showMeetingLink && <div className="meeting-link-content"><div className="notice"><Link2 size={17} /><span>Après avoir saisi les présences, créez un lien pour cette réunion. Seuls les ouvriers pointés <strong>Présent</strong> pour la date et le département choisis pourront confirmer. Ils rechercheront leur nom et vérifieront leur identité avec les quatre derniers chiffres de leur téléphone. Le lien dure 30 jours. Vous le partagez vous-même par WhatsApp ou en le copiant.</span></div>
-        <div className="form-grid attendance-controls" style={{ marginTop: 16 }}><div className="field"><label htmlFor="meeting-name">Nom de la réunion *</label><input id="meeting-name" value={meetingName} maxLength={120} onChange={(event) => { setMeetingName(event.target.value); setMeetingLink(""); setMeetingNotice(""); }} placeholder="Ex. Réunion des ouvriers" required /></div><div className="field"><label>Date de la réunion</label><input type="date" value={eventDate} onChange={(event) => { setEventDate(event.target.value); setMeetingLink(""); setMeetingNotice(""); }} /></div><div className="field"><label>Département</label><select value={department} onChange={(event) => { setDepartment(event.target.value); setMeetingLink(""); setMeetingNotice(""); }}><option value="">Tous les départements autorisés</option>{data.departments.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></div><div className="field meeting-link-action"><span className="field-label">Ouvriers concernés</span><button className="button" type="button" onClick={() => void createMeetingConfirmationLink()} disabled={meetingBusy || offline || !meetingName.trim()}><Link2 size={15} />{meetingBusy ? "Création…" : offline ? "Connexion requise" : "Créer le lien"}</button></div></div>
+      {showMeetingLink && <div className="meeting-link-content"><div className="notice"><Link2 size={17} /><span>Après le pointage, le lien n’est utilisable que par les ouvriers déjà marqués présents pour cette réunion. Ils vérifient leur identité avec le nom et l’adresse e-mail enregistrés, puis un code leur est envoyé. Ils doivent autoriser la position GPS précise dans le périmètre défini ici. Toute personne qui refuse cette vérification peut choisir le statut absent; si elle ne peut pas valider le code e-mail, l’administration doit enregistrer l’absence manuellement. Le lien dure 30 jours.</span></div>
+        <div className="form-grid attendance-controls" style={{ marginTop: 16 }}><div className="field"><label htmlFor="meeting-name">Nom de la réunion *</label><input id="meeting-name" value={meetingName} maxLength={120} onChange={(event) => { setMeetingName(event.target.value); setMeetingLink(""); setMeetingNotice(""); }} placeholder="Ex. Réunion des ouvriers" required /></div><div className="field"><label>Date de la réunion</label><input type="date" value={eventDate} onChange={(event) => { setEventDate(event.target.value); setMeetingLink(""); setMeetingNotice(""); }} /></div><div className="field"><label>Département</label><select value={department} onChange={(event) => { setDepartment(event.target.value); setMeetingLink(""); setMeetingNotice(""); }}><option value="">Tous les départements autorisés</option>{data.departments.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></div><div className="field"><label htmlFor="meeting-radius">Rayon autorisé (mètres)</label><input id="meeting-radius" type="number" min={30} max={500} step={10} value={meetingRadius} onChange={(event) => { setMeetingRadius(Number(event.target.value)); setMeetingLink(""); }} /><span className="field-hint">Réglage initial : 90 m. Limites : 30 à 500 m.</span></div><div className="field meeting-link-action"><span className="field-label">Lieu de la réunion *</span><button className="button secondary" type="button" onClick={() => void captureMeetingCenter()} disabled={locatingAdmin || offline}><MapPin size={15} />{locatingAdmin ? "Lecture GPS précise…" : meetingCenter ? "Actualiser la position du lieu" : "Utiliser la position actuelle"}</button>{meetingCenter && <span className="field-hint">Centre : {meetingCenter.latitude.toFixed(6)}, {meetingCenter.longitude.toFixed(6)} · précision {Math.round(meetingCenter.accuracy_meters)} m</span>}</div><div className="field meeting-link-action"><span className="field-label">Ouvriers concernés</span><button className="button" type="button" onClick={() => void createMeetingConfirmationLink()} disabled={meetingBusy || offline || !meetingName.trim() || !meetingCenter || meetingRadius < 30 || meetingRadius > 500}><Link2 size={15} />{meetingBusy ? "Création…" : offline ? "Connexion requise" : "Créer le lien"}</button></div></div>
         {meetingNotice && <div className="notice" style={{ marginTop: 13 }} role="status">{meetingNotice}</div>}{meetingError && <div className="notice error" style={{ marginTop: 13 }} role="alert">{meetingError}</div>}
         {meetingLink && <div className="meeting-link-result"><div className="field"><label htmlFor="meeting-link-url">Lien court de confirmation</label><input id="meeting-link-url" value={meetingLink} readOnly onFocus={(event) => event.currentTarget.select()} /></div><div className="meeting-link-buttons"><button className="button secondary small" type="button" onClick={() => void copyMeetingLink()}><Copy size={14} />Copier</button><a className="button small" href={`https://wa.me/?text=${encodeURIComponent(`Bonjour, merci de confirmer votre présence à ${meetingName} du ${new Date(`${eventDate}T12:00:00`).toLocaleDateString("fr-FR")}. Lien de confirmation : ${meetingLink}`)}`} target="_blank" rel="noreferrer"><MessageCircle size={14} />Partager sur WhatsApp</a></div></div>}
       </div>}
@@ -268,7 +315,7 @@ export default function AttendancePage() {
     <div className="attendance-print-header"><div className="attendance-print-brand"><img src="/silo-logo.png" alt="Logo Silo" /><div><strong>SILO VERT OUVRIERS</strong><span>Centre Évangélique Silo · Campus de la Cité Verte</span></div></div><h1>Historique des présences</h1><p>{department ? data.departments.find((item) => item.id === department)?.name : "Tous les départements autorisés"} · Imprimé le {new Date().toLocaleDateString("fr-FR")}</p></div>
     <section className="card panel attendance-history" style={{ marginTop: 17 }}><div className="panel-heading"><div><h2>Historique récent</h2><div className="field-hint" style={{ marginTop: 3 }}>Les justifications et confirmations en ligne sont visibles selon vos autorisations.</div></div><div className="attendance-history-actions"><Activity size={18} color="#658775" /><button className="button secondary small no-print" type="button" onClick={() => window.print()}><Printer size={14} />Imprimer / PDF</button></div></div>
       <div className="filter-row no-print"><select className="select-compact" value={department} onChange={(event) => setDepartment(event.target.value)} aria-label="Filtrer par département"><option value="">Tous mes départements</option>{data.departments.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
-      {loading && !data.rows.length ? <div className="empty-state no-print"><div className="spinner" style={{ margin: "auto" }} /></div> : data.rows.length ? <div className="table-wrap"><table><thead><tr><th>Date</th><th>Événement</th><th>Personne</th><th>Département</th><th>Statut</th><th>Motif</th><th>Confirmation en ligne</th><th>Pointé par</th></tr></thead><tbody>{data.rows.map((row) => <tr key={row.id}><td>{new Date(`${row.event_date}T12:00:00`).toLocaleDateString("fr-FR")}</td><td>{row.event_name || "Pointage quotidien"}</td><td><strong>{row.member_name}</strong></td><td>{row.department_name}</td><td><span className={`badge ${row.statut_presence === "present" ? "approved" : row.statut_presence === "justified" ? "pending" : "rejected"}`}>{statusLabels[row.statut_presence] ?? row.statut_presence}</span></td><td>{row.justification || "—"}</td><td>{row.self_confirmed_at ? `Confirmé le ${new Date(row.self_confirmed_at).toLocaleString("fr-FR")}` : "En attente"}</td><td>{row.recorded_by_name ?? "—"}</td></tr>)}</tbody></table></div> : <div className="empty-state"><Activity size={25} /><strong>Aucun pointage</strong>Les présences enregistrées apparaîtront ici.</div>}
+      {loading && !data.rows.length ? <div className="empty-state no-print"><div className="spinner" style={{ margin: "auto" }} /></div> : data.rows.length ? <div className="table-wrap"><table><thead><tr><th>Date</th><th>Événement</th><th>Personne</th><th>Département</th><th>Statut</th><th>Motif</th><th>Confirmation en ligne</th>{role === "super_admin" && <th className="no-print">Position GPS exacte</th>}<th>Pointé par</th>{canWrite && <th className="no-print">Action</th>}</tr></thead><tbody>{data.rows.map((row) => <tr key={row.id}><td>{new Date(`${row.event_date}T12:00:00`).toLocaleDateString("fr-FR")}</td><td>{row.event_name || "Pointage quotidien"}</td><td><strong>{row.member_name}</strong></td><td>{row.department_name}</td><td><span className={`badge ${row.statut_presence === "present" ? "approved" : row.statut_presence === "justified" ? "pending" : "rejected"}`}>{statusLabels[row.statut_presence] ?? row.statut_presence}</span></td><td>{row.justification || "—"}</td><td>{row.self_confirmed_at ? `Confirmé le ${new Date(row.self_confirmed_at).toLocaleString("fr-FR")}` : row.self_declined_at ? `Refusé · marqué absent le ${new Date(row.self_declined_at).toLocaleString("fr-FR")}` : "En attente / pointage manuel"}</td>{role === "super_admin" && <td className="no-print">{row.confirmation_latitude != null && row.confirmation_longitude != null ? <><a href={`https://maps.google.com/?q=${row.confirmation_latitude},${row.confirmation_longitude}`} target="_blank" rel="noreferrer">{row.confirmation_latitude.toFixed(6)}, {row.confirmation_longitude.toFixed(6)}</a><div className="field-hint">Précision ±{Math.round(row.confirmation_accuracy_meters ?? 0)} m · {Math.round(row.confirmation_distance_meters ?? 0)} m du centre</div></> : row.self_declined_at ? "Refus GPS" : "Non relevée"}</td>}<td>{row.recorded_by_name ?? "—"}</td>{canWrite && <td className="no-print">{row.statut_presence === "present" && !row.self_confirmed_at && !row.self_declined_at ? <button className="button secondary small" type="button" disabled={busy} onClick={() => void markRefusalAbsent(row)}>Marquer absent</button> : "—"}</td>}</tr>)}</tbody></table></div> : <div className="empty-state"><Activity size={25} /><strong>Aucun pointage</strong>Les présences enregistrées apparaîtront ici.</div>}
     </section>
   </div></AdminShell>;
 }

@@ -11,6 +11,10 @@ const schema = z.object({
   event_name: z.string().trim().min(1).max(120),
   event_date: z.string().date(),
   department_id: z.string().uuid().nullable().optional(),
+  center_latitude: z.number().finite().min(-90).max(90),
+  center_longitude: z.number().finite().min(-180).max(180),
+  center_accuracy_meters: z.number().finite().positive().max(30),
+  radius_meters: z.number().int().min(30).max(500).default(90),
 });
 
 export async function POST(request: NextRequest) {
@@ -53,6 +57,10 @@ export async function POST(request: NextRequest) {
       department_ids: allowedDepartmentIds,
       created_by: auth.userId,
       expires_at: expiresAt,
+      center_latitude: parsed.data.center_latitude,
+      center_longitude: parsed.data.center_longitude,
+      center_accuracy_meters: parsed.data.center_accuracy_meters,
+      radius_meters: parsed.data.radius_meters,
     }).select("id").single();
     if (linkError) throw linkError;
 
@@ -61,7 +69,7 @@ export async function POST(request: NextRequest) {
       action: "attendance.confirmation_link_created",
       object_type: "attendance_confirmation_link",
       object_id: link.id,
-      context: { event_name: parsed.data.event_name, event_date: parsed.data.event_date, attendee_count: attendeeCount },
+      context: { event_name: parsed.data.event_name, event_date: parsed.data.event_date, attendee_count: attendeeCount, radius_meters: parsed.data.radius_meters, location_center_configured: true },
     });
     if (auditError) console.error("Échec du journal de création du lien de présence", auditError.message);
 
