@@ -46,3 +46,5 @@ supabase/.temp/
 
 # Secrets de configuration locale
 /.env
+.vercel
+.env*

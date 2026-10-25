@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { requirePermission } from "@/lib/api/auth";
 import { errorResponse, validationResponse } from "@/lib/api/respond";
@@ -23,7 +24,27 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (parsed.data.action === "approved" && parsed.data.departmentIds.length < 1) {
       return validationResponse("Confirmez au moins un département avant de valider.");
     }
-    const { data, error } = await getSupabaseAdmin().rpc("review_worker_submission", {
+    const supabase = getSupabaseAdmin();
+    if (parsed.data.action === "needs_changes") {
+      const editToken = randomBytes(16).toString("base64url");
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase.rpc("request_worker_submission_correction", {
+        p_submission_id: id,
+        p_actor_id: auth.userId,
+        p_reason: parsed.data.reason,
+        p_token_hash: createHash("sha256").update(editToken).digest("hex"),
+        p_expires_at: expiresAt,
+      });
+      if (error) {
+        if (error.message.includes("SUBMISSION_NOT_FOUND")) return validationResponse("Formulaire introuvable.", 404);
+        if (error.message.includes("ALREADY_CLOSED")) return validationResponse("Ce dossier a déjà été clôturé.", 409);
+        throw error;
+      }
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") || request.nextUrl.origin;
+      return NextResponse.json({ result: data, editLink: `${appUrl}/i/${editToken}`, editLinkExpiresAt: expiresAt });
+    }
+
+    const { data, error } = await supabase.rpc("review_worker_submission", {
       p_submission_id: id,
       p_actor_id: auth.userId,
       p_action: parsed.data.action,

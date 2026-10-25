@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requirePermission } from "@/lib/api/auth";
+import { hasProfilePermission, requirePermission } from "@/lib/api/auth";
 import { errorResponse } from "@/lib/api/respond";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -9,17 +9,19 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, "submissions.read");
     const supabase = getSupabaseAdmin();
+    const canValidate = auth.role === "super_admin" || await hasProfilePermission(auth, "submissions.validate");
     const status = request.nextUrl.searchParams.get("status");
     let query = supabase.from("worker_submissions")
-      .select("id, reference_number, data, photo_path, status, date_soumission, date_traitement, motif_rejet, correction_note")
+      .select("id, reference_number, data, photo_path, status, date_soumission, date_traitement, motif_rejet, correction_note, member_id")
       .order("date_soumission", { ascending: false }).limit(200);
-    if (status && ["pending", "reviewing", "needs_changes", "approved", "rejected"].includes(status)) query = query.eq("status", status);
+    if (status === "to_review") query = query.in("status", ["pending", "reviewing"]);
+    else if (status && ["pending", "reviewing", "needs_changes", "approved", "rejected"].includes(status)) query = query.eq("status", status);
 
     if (auth.role === "department_lead") {
       const { data: visible } = await supabase.from("worker_submission_departments").select("submission_id")
         .in("department_id", auth.departmentIds);
       const ids = [...new Set((visible ?? []).map((row) => row.submission_id))];
-      if (ids.length === 0) return NextResponse.json({ submissions: [] }, { headers: { "Cache-Control": "no-store" } });
+      if (ids.length === 0) return NextResponse.json({ submissions: [], canValidate }, { headers: { "Cache-Control": "no-store" } });
       query = query.in("id", ids);
     }
 
@@ -50,7 +52,7 @@ export async function GET(request: NextRequest) {
         photo_url: signed?.data?.signedUrl ?? null,
       };
     }));
-    return NextResponse.json({ submissions }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ submissions, canValidate }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return errorResponse(error);
   }

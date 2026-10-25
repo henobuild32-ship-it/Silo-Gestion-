@@ -57,6 +57,9 @@ export async function POST(request: NextRequest) {
     if (!allowed) return validationResponse("Trop de tentatives. Réessayez dans une minute.", 429);
 
     const tokenHash = createHash("sha256").update(token).digest("hex");
+    const { data: editToken, error: editTokenError } = await supabase.from("submission_edit_tokens")
+      .select("id").eq("token_hash", tokenHash).maybeSingle();
+    if (editTokenError) throw editTokenError;
     const selectedIds = [...new Set(parsed.data.departments)];
     const { data: validDepartments, error: departmentError } = await supabase.from("departments")
       .select("id").in("id", selectedIds).eq("status", "active");
@@ -79,19 +82,36 @@ export async function POST(request: NextRequest) {
     }
 
     const { departments: _departments, exactitude_confirmee: _confirmed, ...data } = parsed.data;
-    const { data: result, error: submitError } = await supabase.rpc("submit_worker_application", {
-      p_token_hash: tokenHash,
-      p_request_id: requestId,
-      p_data: data,
-      p_department_ids: selectedIds,
-      p_photo_path: uploadedPath,
-    });
+    const { data: result, error: submitError } = editToken
+      ? await supabase.rpc("submit_worker_correction", {
+        p_token_hash: tokenHash,
+        p_request_id: requestId,
+        p_data: data,
+        p_department_ids: selectedIds,
+        p_photo_path: uploadedPath,
+      })
+      : await supabase.rpc("submit_worker_application", {
+        p_token_hash: tokenHash,
+        p_request_id: requestId,
+        p_data: data,
+        p_department_ids: selectedIds,
+        p_photo_path: uploadedPath,
+      });
     if (submitError) {
       if (uploadedPath) await supabase.storage.from("church-profiles").remove([uploadedPath]);
+      if (submitError.message.includes("EDIT_TOKEN_INVALID")) {
+        return validationResponse("Ce lien de correction est expiré ou a déjà été utilisé. Demandez un nouveau lien à l’administration.", 410);
+      }
       if (submitError.message.includes("LINK_INVALID") || submitError.message.includes("LINK_LIMIT_REACHED")) {
         return validationResponse("Ce lien est expiré ou a atteint sa limite d’utilisation.", 410);
       }
       throw submitError;
+    }
+    if (editToken && uploadedPath && result?.old_photo_path && result.old_photo_path !== uploadedPath) {
+      try { await supabase.storage.from("church-profiles").remove([result.old_photo_path]); } catch { /* retain old photo if cleanup fails */ }
+    }
+    if (uploadedPath && result?.idempotent) {
+      try { await supabase.storage.from("church-profiles").remove([uploadedPath]); } catch { /* best-effort cleanup */ }
     }
     try {
       const [admins, readers] = await Promise.all([
@@ -107,15 +127,15 @@ export async function POST(request: NextRequest) {
       if (activeError) throw activeError;
       const recipients = [...new Set([...(admins.data ?? []).map((profile) => profile.id), ...(activeReaders ?? []).map((profile) => profile.id)])];
       await sendPushToUsers(recipients, {
-        title: "Nouveau formulaire d’ouvrier",
-        body: `Un dossier ${result.reference_number} attend une vérification.`,
+        title: editToken ? "Formulaire corrigé à vérifier" : "Nouveau formulaire d’ouvrier",
+        body: editToken ? `Les corrections du dossier ${result.reference_number} attendent votre vérification.` : `Un dossier ${result.reference_number} attend une vérification.`,
         url: "/admin/submissions",
         tag: `submission-${result.reference_number}`,
       });
     } catch (pushError) {
       console.error("Notification de nouvelle inscription non délivrée", pushError instanceof Error ? pushError.message : "erreur inconnue");
     }
-    return NextResponse.json({ reference: result.reference_number }, { status: 201, headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ reference: result.reference_number, corrected: Boolean(editToken) }, { status: editToken ? 200 : 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (uploadedPath) {
       try { await getSupabaseAdmin().storage.from("church-profiles").remove([uploadedPath]); } catch { /* best-effort cleanup */ }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Activity, Bell, BellOff, CalendarDays, ChartNoAxesCombined, ClipboardList, Coins, DoorOpen,
+  Activity, Bell, BellOff, ChartNoAxesCombined, ClipboardList, DoorOpen,
   FileCheck2, LayoutDashboard, LayoutGrid, Menu, Settings2, ShieldCheck, Users, UsersRound,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api/client";
@@ -15,13 +15,11 @@ import { ChurchLogo } from "@/components/church-logo";
 type UserInfo = { userId: string; fullName: string; email: string; role: string; permissions: string[] };
 const nav = [
   { label: "Vue d’ensemble", href: "/dashboard", icon: LayoutDashboard, permission: "dashboard.read", section: "ESPACE" },
-  { label: "Formulaires reçus", href: "/admin/submissions", icon: FileCheck2, permission: "submissions.read" },
+  { label: "Vérification", href: "/admin/submissions", icon: FileCheck2, permission: "submissions.read" },
   { label: "Liens d’inscription", href: "/admin/registration-links", icon: ClipboardList, permission: "links.manage" },
   { label: "Membres & ouvriers", href: "/admin/members", icon: UsersRound, permission: "members.read_all", alternate: "members.read_assigned", section: "GESTION" },
   { label: "Départements", href: "/admin/departments", icon: Users, permission: "departments.read_all", alternate: "departments.read_assigned" },
   { label: "Présences", href: "/admin/attendance", icon: Activity, permission: "attendance.read_all", alternate: "attendance.read_assigned" },
-  { label: "Programmes", href: "/admin/activities", icon: CalendarDays, permission: "activities.read_all", alternate: "activities.read_assigned" },
-  { label: "Finances", href: "/admin/finances", icon: Coins, permission: "finance.read" },
   { label: "Rapports", href: "/admin/reports", icon: ChartNoAxesCombined, permission: "", anyOf: ["members.read_all", "members.read_assigned", "attendance.read_all", "attendance.read_assigned", "activities.read_all", "activities.read_assigned", "finance.read"] },
   { label: "Journal d’audit", href: "/admin/audit", icon: ShieldCheck, permission: "audit.read" },
   { label: "Administration", href: "/admin/settings", icon: Settings2, permission: "users.manage", section: "SYSTÈME" },
@@ -156,7 +154,7 @@ export function AdminShell({ children, title }: { children: React.ReactNode; tit
     <div className="admin-layout">
       <button className={`mobile-overlay ${menuOpen ? "open" : ""}`} aria-label="Fermer le menu" onClick={() => setMenuOpen(false)} />
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
-        <div className="sidebar-brand"><ChurchLogo size={40} className="sidebar-logo" /><div><div className="brand-title">SILO GESTION</div><div className="brand-subtitle">Centre Évangélique Silo</div></div></div>
+        <div className="sidebar-brand"><ChurchLogo size={40} className="sidebar-logo" /><div><div className="brand-title">SILO VERT OUVRIERS</div><div className="brand-subtitle">Campus de la Cité Verte</div></div></div>
         {visibleNav.map((item, index) => {
           const Icon = item.icon;
           return <div key={item.href}>

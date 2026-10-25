@@ -1,4 +1,4 @@
--- SILO GESTION ÉGLISE — schéma initial PostgreSQL/Supabase
+-- SILO VERT OUVRIERS — schéma initial PostgreSQL/Supabase
 -- Appliquer avec Supabase CLI: supabase db push
 
 create extension if not exists pgcrypto with schema extensions;
@@ -152,9 +152,13 @@ create table public.worker_submissions (
   member_id uuid unique references public.members(id) on delete set null,
   motif_rejet text,
   correction_note text,
+  correction_request_id uuid,
   updated_at timestamptz not null default now()
 );
 create index worker_submissions_status_date on public.worker_submissions(status, date_soumission desc);
+create unique index worker_submissions_correction_request_id
+  on public.worker_submissions(correction_request_id)
+  where correction_request_id is not null;
 
 create table public.worker_submission_departments (
   submission_id uuid not null references public.worker_submissions(id) on delete cascade,

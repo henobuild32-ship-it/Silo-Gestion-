@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {
     const auth = await getAuthContext(request);
-    const sent = await sendPushToUsers([auth.userId], { title: "SILO Gestion Église", body: "Les notifications sont activées sur cet appareil.", url: "/dashboard", tag: "silo-push-test" });
+    const sent = await sendPushToUsers([auth.userId], { title: "Silo Vert Ouvriers", body: "Les notifications sont activées sur cet appareil.", url: "/dashboard", tag: "silo-push-test" });
     return NextResponse.json({ sent }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) { return errorResponse(error); }
 }

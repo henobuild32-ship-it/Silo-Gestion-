@@ -4,8 +4,10 @@ export type AttendancePayload = {
   member_id: string;
   department_id: string;
   activity_id: string | null;
+  event_name: string;
   event_date: string;
-  statut_presence: "present" | "absent";
+  statut_presence: "present" | "absent" | "justified";
+  justification: string;
 };
 export type OfflineAttendanceSnapshot<T> = { userId: string; savedAt: string; data: T };
 export type PendingAttendance = { id: string; userId: string; createdAt: string; payload: AttendancePayload };

@@ -32,6 +32,8 @@ export default function InitialAdminPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "La création du compte a échoué.");
       setSetupState("complete");
+      window.dispatchEvent(new Event("silo:initial-admin-created"));
+      try { localStorage.setItem("silo-initial-admin-created", Date.now().toString()); } catch { /* cross-tab update is best effort */ }
     } catch (reason) { setError(reason instanceof Error ? reason.message : "La création du compte a échoué."); }
     finally { setBusy(false); }
   }
@@ -42,6 +44,7 @@ export default function InitialAdminPage() {
     <div className="auth-card">
       <Link href="/connexion" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--muted)", fontSize: 12 }}><ArrowLeft size={14} /> Retour à la connexion</Link>
       <div style={{ marginTop: 24 }}><ChurchLogo size={68} /></div>
+      <div className="brand-title" style={{ marginTop: 12 }}>SILO VERT OUVRIERS</div>
       <h1>Première installation</h1>
       {setupState === "checking" && <div className="notice" role="status"><span className="spinner" /> Vérification de l’installation…</div>}
       {setupState === "error" && <div className="notice error" role="alert">Impossible de joindre la configuration Supabase. Rechargez la page ou contactez l’administrateur.</div>}

@@ -38,7 +38,7 @@ export default function ReportsPage() {
       const text = await response.text();
       const rows = parseCsv(text);
       const doc = popup.document;
-      doc.open(); doc.write("<!doctype html><html lang='fr'><head><meta charset='utf-8'><title>Rapport SILO</title></head><body></body></html>"); doc.close();
+      doc.open(); doc.write("<!doctype html><html lang='fr'><head><meta charset='utf-8'><title>Rapport Silo Vert Ouvriers</title></head><body></body></html>"); doc.close();
       doc.body.style.cssText = "font:12px Arial,sans-serif;color:#172c29;padding:24px";
       const title = doc.createElement("h1"); title.textContent = `Centre Évangélique Silo — ${reportNames[type]}`; title.style.cssText = "font-size:18px;margin:0 0 6px"; doc.body.append(title);
       const date = doc.createElement("p"); date.textContent = `Campus de la Cité Verte · Généré le ${new Date().toLocaleString("fr-FR")}`; date.style.cssText = "color:#65736d;font-size:11px;margin:0 0 16px"; doc.body.append(date);

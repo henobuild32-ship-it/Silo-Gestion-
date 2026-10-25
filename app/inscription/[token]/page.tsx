@@ -24,13 +24,23 @@ export default function WorkerRegistrationPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [reference, setReference] = useState("");
+  const [isCorrection, setIsCorrection] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const requestId = useRef("");
 
   useEffect(() => {
     const controller = new AbortController();
     fetch(`/api/public/links/${encodeURIComponent(token)}`, { cache: "no-store", signal: controller.signal })
-      .then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error); setDepartments(data.departments ?? []); })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+        setDepartments(data.departments ?? []);
+        if (data.mode === "correction") {
+          setIsCorrection(true);
+          setValues({ ...initialValues, ...(data.data ?? {}) });
+          setSelected(data.departmentIds ?? []);
+        }
+      })
       .catch((reason: Error) => { if (reason.name !== "AbortError") setError(reason.message || "Ce lien n’est pas disponible."); })
       .finally(() => setLoading(false));
     return () => controller.abort();
@@ -91,6 +101,7 @@ export default function WorkerRegistrationPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "L’envoi du formulaire a échoué.");
       setReference(result.reference);
+      setIsCorrection(Boolean(result.corrected));
     } catch (reason) { setError(reason instanceof Error ? reason.message : "L’envoi du formulaire a échoué."); }
     finally { setBusy(false); }
   }
@@ -98,8 +109,8 @@ export default function WorkerRegistrationPage() {
   if (loading) return <main className="public-wrap"><div className="public-card" style={{ minHeight: 250, display: "grid", placeItems: "center" }}><div className="spinner" /></div></main>;
   return <main className="public-wrap">
     <Header />
-    {error && departments.length === 0 ? <div className="public-card"><div className="public-card-body"><div className="notice error"><LockKeyhole size={17} />{error}</div><p style={{ margin: "18px 0 0", color: "var(--muted)", fontSize: 13 }}>Demandez un nouveau lien à l’administration du Centre Évangélique Silo.</p></div></div> : reference ? <Success reference={reference} /> : <div className="public-card">
-      <div className="public-card-head"><div className="eyebrow" style={{ marginBottom: 9 }}>Centre Évangélique Silo — Campus de la Cité Verte</div><h1 style={{ fontSize: 24, margin: "0 0 8px" }}>FORMULAIRE D’IDENTIFICATION DES OUVRIERS</h1><p style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.65, margin: 0, maxWidth: 700 }}>Ce formulaire sert à mettre à jour les informations des ouvriers et à préparer leur affectation aux départements concernés. Les champs marqués d’un astérisque sont obligatoires.</p></div>
+    {error && departments.length === 0 ? <div className="public-card"><div className="public-card-body"><div className="notice error"><LockKeyhole size={17} />{error}</div><p style={{ margin: "18px 0 0", color: "var(--muted)", fontSize: 13 }}>Demandez un nouveau lien à l’administration du Centre Évangélique Silo.</p></div></div> : reference ? <Success reference={reference} correction={isCorrection} /> : <div className="public-card">
+      <div className="public-card-head"><div className="eyebrow" style={{ marginBottom: 9 }}>Centre Évangélique Silo — Campus de la Cité Verte</div><h1 style={{ fontSize: 24, margin: "0 0 8px" }}>{isCorrection ? "CORRECTION DE VOTRE FICHE D’IDENTIFICATION" : "FORMULAIRE D’IDENTIFICATION DES OUVRIERS"}</h1><p style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.65, margin: 0, maxWidth: 700 }}>{isCorrection ? "L’administration vous a demandé de compléter votre fiche. Les informations déjà transmises sont préremplies. Après votre envoi, le dossier retournera à l’administration pour une nouvelle vérification." : "Ce formulaire sert à mettre à jour les informations des ouvriers et à préparer leur affectation aux départements concernés. Les champs marqués d’un astérisque sont obligatoires."}</p></div>
       <div className="public-card-body">
         <div className="wizard-steps" aria-label={`Étape ${step + 1} sur 3`}>{[0, 1, 2].map((item) => <div key={item} className={`wizard-step ${item === step ? "current" : item < step ? "done" : ""}`} />)}</div>
         {error && <div className="notice error" role="alert" style={{ marginBottom: 15 }}>{error}</div>}
@@ -120,7 +131,7 @@ export default function WorkerRegistrationPage() {
               <Field label="Adresse électronique"><input type="email" autoComplete="email" maxLength={254} value={values.email} onChange={(e) => change("email", e.target.value)} /></Field>
             </div>
           </section>
-          <section className="form-section"><SectionTitle icon={<Camera />} title="Photo de profil" description="Veuillez ajouter une photo récente de type passeport afin de faciliter votre identification dans les dossiers de l’Église. Cette photo est facultative, mais recommandée." />
+          <section className="form-section"><SectionTitle icon={<Camera />} title="Photo de profil" description={isCorrection ? "Vous pouvez remplacer la photo. Si vous n’en choisissez pas une nouvelle, la photo déjà transmise sera conservée." : "Veuillez ajouter une photo récente de type passeport afin de faciliter votre identification dans les dossiers de l’Église. Cette photo est facultative, mais recommandée."} />
             <div className="photo-drop">
               {photoUrl ? <img className="photo-preview" src={photoUrl} alt="Aperçu de la photo de profil" /> : <div className="photo-preview" style={{ display: "grid", placeItems: "center", color: "#8a9b90" }}><ImagePlus size={25} /></div>}
               <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 700, marginBottom: 5 }}>{photo ? photo.name : "Aucune photo sélectionnée"}</div><div className="field-hint" style={{ marginBottom: 10 }}>JPEG, PNG ou WebP · 2 Mo maximum</div><label className="button secondary small" style={{ display: "inline-flex", cursor: "pointer" }}><Camera size={14} /> {photo ? "Remplacer la photo" : "Ajouter une photo"}<input aria-label="Choisir une photo" type="file" accept="image/jpeg,image/png,image/webp" capture="user" onChange={(event) => void choosePhoto(event)} style={{ display: "none" }} /></label>{photo && <button type="button" className="button ghost small" style={{ marginLeft: 8 }} onClick={() => { URL.revokeObjectURL(photoUrl); setPhoto(null); setPhotoUrl(""); }}><Trash2 size={14} /> Supprimer</button>}</div>
@@ -146,13 +157,13 @@ export default function WorkerRegistrationPage() {
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, paddingTop: 18 }}><button className="button secondary" type="button" onClick={() => setStep(0)}><ChevronLeft size={16} /> Précédent</button><button className="button" type="submit">Vérifier mes informations <ChevronRight size={16} /></button></div>
         </form>}
         {step === 2 && <>
-          <section className="form-section"><SectionTitle icon={<CheckCircle2 size={17} />} title="Vérifiez vos informations" description="Vous pouvez revenir en arrière et corriger votre formulaire avant l’envoi." />
+          <section className="form-section"><SectionTitle icon={<CheckCircle2 size={17} />} title={isCorrection ? "Vérifiez les corrections" : "Vérifiez vos informations"} description="Vous pouvez revenir en arrière et corriger votre formulaire avant l’envoi." />
             <div className="summary-list">{[["Nom complet", `${values.nom} ${values.postnom} ${values.prenom}`], ["Téléphone", values.telephone], ["Adresse", `${values.adresse}, ${values.commune}${values.quartier ? ` · ${values.quartier}` : ""}`], ["Photo", photo ? photo.name : "Aucune photo"], ["Départements", departmentNames.join(" · ")], ["Service", [values.fonction, values.date_debut_service].filter(Boolean).join(" · ") || "Non renseigné"]].map(([label, value]) => <div className="summary-row" key={label}><strong>{label}</strong><span>{value}</span></div>)}</div>
             {photoUrl && <img src={photoUrl} alt="Photo sélectionnée" style={{ width: 70, height: 84, objectFit: "cover", borderRadius: 8, marginTop: 15 }} />}
           </section>
           <div className="notice" style={{ margin: "18px 0" }}><LockKeyhole size={16} />Vos informations ne sont visibles que par les personnes autorisées dans le cadre de leurs fonctions.</div>
           <label className="check-card" style={{ alignItems: "center", marginBottom: 18 }}><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} /><span>Je confirme que les informations fournies sont exactes.</span></label>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}><button className="button secondary" type="button" onClick={() => { setStep(1); setError(""); }} disabled={busy}><ChevronLeft size={16} /> Modifier le formulaire</button><button className="button" type="button" onClick={() => void submit()} disabled={busy}>{busy ? <><span className="spinner" /> Envoi…</> : <>Envoyer mon formulaire <ChevronRight size={16} /></>}</button></div>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}><button className="button secondary" type="button" onClick={() => { setStep(1); setError(""); }} disabled={busy}><ChevronLeft size={16} /> Modifier le formulaire</button><button className="button" type="button" onClick={() => void submit()} disabled={busy}>{busy ? <><span className="spinner" /> Envoi…</> : <>{isCorrection ? "Envoyer mes corrections" : "Envoyer mon formulaire"} <ChevronRight size={16} /></>}</button></div>
         </>}
         <div className="field-hint" style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center", marginTop: 22 }}><LockKeyhole size={13} /> Connexion sécurisée · Aucun accès aux dossiers d’autres ouvriers</div>
       </div>
@@ -161,7 +172,7 @@ export default function WorkerRegistrationPage() {
 }
 
 function Header() {
-  return <header className="public-header"><ChurchLogo size={58} /><div><div className="brand-title">CENTRE ÉVANGÉLIQUE SILO</div><div className="brand-subtitle">Campus de la Cité Verte</div></div></header>;
+  return <header className="public-header"><ChurchLogo size={58} /><div><div className="brand-title">SILO VERT OUVRIERS</div><div className="brand-subtitle">Centre Évangélique Silo · Campus de la Cité Verte</div></div></header>;
 }
 function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return <div className="field"><label>{label}{required && <> <span className="required">*</span></>}</label>{children}</div>;
@@ -169,6 +180,6 @@ function Field({ label, required, children }: { label: string; required?: boolea
 function SectionTitle({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
   return <div className="section-title"><div className="section-title-icon">{icon}</div><div><h2>{title}</h2><p>{description}</p></div></div>;
 }
-function Success({ reference }: { reference: string }) {
-  return <div className="public-card"><div className="public-card-body" style={{ textAlign: "center", padding: "54px 24px" }}><div style={{ display: "grid", placeItems: "center", margin: "0 auto 19px", width: 62, height: 62, borderRadius: "50%", background: "#e5f3e9", color: "#397052" }}><CheckCircle2 size={33} /></div><div className="eyebrow" style={{ justifyContent: "center" }}>Transmission terminée</div><h1 style={{ fontSize: 25, marginBottom: 12 }}>VOTRE FORMULAIRE A ÉTÉ ENVOYÉ AVEC SUCCÈS</h1><p style={{ maxWidth: 610, margin: "0 auto 18px", color: "var(--muted)", lineHeight: 1.7 }}>Merci d’avoir rempli votre fiche d’identification. Votre formulaire a été transmis à l’administration du Centre Évangélique Silo — Campus de la Cité Verte. Vos informations seront vérifiées avant la validation définitive de votre dossier.</p><div className="card" style={{ display: "inline-block", padding: "12px 20px", margin: "4px auto 15px" }}><div className="field-hint">Numéro de référence</div><strong style={{ fontSize: 17, letterSpacing: ".07em" }}>{reference}</strong></div><div className="field-hint">La soumission ne signifie pas que l’inscription est déjà validée.</div></div></div>;
+function Success({ reference, correction }: { reference: string; correction: boolean }) {
+  return <div className="public-card"><div className="public-card-body" style={{ textAlign: "center", padding: "54px 24px" }}><div style={{ display: "grid", placeItems: "center", margin: "0 auto 19px", width: 62, height: 62, borderRadius: "50%", background: "#e5f3e9", color: "#397052" }}><CheckCircle2 size={33} /></div><div className="eyebrow" style={{ justifyContent: "center" }}>Transmission terminée</div><h1 style={{ fontSize: 25, marginBottom: 12 }}>{correction ? "VOS CORRECTIONS ONT ÉTÉ ENVOYÉES" : "VOTRE FORMULAIRE A ÉTÉ ENVOYÉ AVEC SUCCÈS"}</h1><p style={{ maxWidth: 610, margin: "0 auto 18px", color: "var(--muted)", lineHeight: 1.7 }}>{correction ? "Merci. Vos corrections ont été transmises à l’administration du Centre Évangélique Silo — Campus de la Cité Verte. Un administrateur doit les vérifier et valider lui-même votre dossier avant son intégration aux départements." : "Merci d’avoir rempli votre fiche d’identification. Votre formulaire a été transmis à l’administration du Centre Évangélique Silo — Campus de la Cité Verte. Vos informations seront vérifiées avant la validation définitive de votre dossier."}</p><div className="card" style={{ display: "inline-block", padding: "12px 20px", margin: "4px auto 15px" }}><div className="field-hint">Numéro de référence</div><strong style={{ fontSize: 17, letterSpacing: ".07em" }}>{reference}</strong></div><div className="field-hint">L’envoi ne vaut pas validation. L’administration vous informera après vérification.</div></div></div>;
 }

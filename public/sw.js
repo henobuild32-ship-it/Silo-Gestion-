@@ -1,4 +1,4 @@
-const VERSION = "silo-pwa-v2";
+const VERSION = "silo-vert-ouvriers-v3";
 const SAFE_PAGES = new Set([
   "/", "/connexion", "/offline", "/dashboard", "/admin/activities",
   "/admin/attendance", "/admin/audit", "/admin/departments", "/admin/finances",
@@ -58,7 +58,7 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  let message = { title: "SILO Gestion Église", body: "Vous avez une nouvelle notification.", url: "/dashboard" };
+  let message = { title: "Silo Vert Ouvriers", body: "Vous avez une nouvelle notification.", url: "/dashboard" };
   try { if (event.data) message = { ...message, ...event.data.json() }; } catch { /* display a safe default */ }
   const target = typeof message.url === "string" && message.url.startsWith("/") && !message.url.startsWith("//") ? message.url : "/dashboard";
   event.waitUntil(self.registration.showNotification(message.title, {

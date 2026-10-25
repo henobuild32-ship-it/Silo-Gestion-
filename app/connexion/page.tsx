@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, LockKeyhole } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -13,6 +13,24 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [setupAvailable, setSetupAvailable] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/setup/bootstrap", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((result) => { if (active) setSetupAvailable(Boolean(result && !result.initialized)); })
+      .catch(() => undefined);
+    const hideSetup = () => setSetupAvailable(false);
+    window.addEventListener("silo:initial-admin-created", hideSetup);
+    const onStorage = (event: StorageEvent) => { if (event.key === "silo-initial-admin-created") hideSetup(); };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      active = false;
+      window.removeEventListener("silo:initial-admin-created", hideSetup);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError("");
@@ -30,6 +48,7 @@ export default function LoginPage() {
     <div className="auth-card">
       <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--muted)", fontSize: 12 }}><ArrowLeft size={14} /> Accueil</Link>
       <div style={{ marginTop: 24 }}><ChurchLogo size={68} /></div>
+      <div className="brand-title" style={{ marginTop: 12 }}>SILO VERT OUVRIERS</div>
       <h1>Bienvenue dans votre espace</h1>
       <p>Connectez-vous avec le compte fourni par l’administration du Centre Évangélique Silo.</p>
       <form onSubmit={submit} className="auth-fields">
@@ -38,7 +57,7 @@ export default function LoginPage() {
         {error && <div className="notice error" role="alert">{error}</div>}
         <button className="button" type="submit" disabled={busy}>{busy ? <><span className="spinner" /> Connexion…</> : <><LockKeyhole size={16} /> Se connecter</>}</button>
       </form>
-      <div className="auth-footer">Première installation ? <Link href="/initial-admin" style={{ color: "var(--green)", fontWeight: 700 }}>Créer l’administrateur principal</Link><br />Cette opération n’est possible qu’une seule fois et nécessite la clé de configuration.</div>
+      {setupAvailable && <div className="auth-footer">Première installation ? <Link href="/initial-admin" style={{ color: "var(--green)", fontWeight: 700 }}>Créer l’administrateur principal</Link><br />Cette opération n’est possible qu’une seule fois et nécessite la clé de configuration.</div>}
     </div>
   </main>;
 }

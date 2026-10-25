@@ -3,10 +3,10 @@ import "./globals.css";
 import { PwaClient } from "@/components/pwa-client";
 
 export const metadata: Metadata = {
-  title: "SILO Gestion Église",
+  title: "Silo Vert Ouvriers",
   description: "Gestion administrative du Centre Évangélique Silo — Campus de la Cité Verte.",
-  applicationName: "SILO Gestion Église",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "SILO" },
+  applicationName: "Silo Vert Ouvriers",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Silo Vert" },
   formatDetection: { telephone: false },
   icons: { icon: "/silo-logo.png", apple: "/silo-logo.png" },
 };

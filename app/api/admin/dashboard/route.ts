@@ -33,12 +33,13 @@ export async function GET(request: NextRequest) {
     const departmentStats = (departments.data ?? []).map((item) => ({ ...item, active_workers: counts.get(item.id) ?? 0 }));
     const present = (attendance.data ?? []).filter((row) => row.statut_presence === "present").length;
     const absent = (attendance.data ?? []).filter((row) => row.statut_presence === "absent").length;
+    const justified = (attendance.data ?? []).filter((row) => row.statut_presence === "justified").length;
     return NextResponse.json({
       stats: {
         members: members.count ?? 0, workers: workers.count ?? 0, visitors: visitors.count ?? 0,
         leaders: leaders.count ?? 0, pending: pending.count ?? 0, reviewing: reviewing.count ?? 0,
         needsChanges: changes.count ?? 0, approved: approved.count ?? 0, rejected: rejected.count ?? 0,
-        upcomingActivities: activities.count ?? 0, presentLast30Days: present, absentLast30Days: absent,
+        upcomingActivities: activities.count ?? 0, presentLast30Days: present, absentLast30Days: absent, justifiedLast30Days: justified,
       },
       departments: departmentStats,
       updatedAt: new Date().toISOString(),

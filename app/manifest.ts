@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "SILO Gestion Église",
-    short_name: "SILO",
+    name: "Silo Vert Ouvriers",
+    short_name: "Silo Vert",
     description: "Gestion du Centre Évangélique Silo — Campus de la Cité Verte.",
     start_url: "/dashboard",
     scope: "/",

@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     } else if (type === "attendance") {
       const auth = await requireAnyPermission(request, ["attendance.read_all", "attendance.read_assigned"]);
       const all = await hasProfilePermission(auth, "attendance.read_all");
-      let query = supabase.from("attendance").select("member_id,department_id,event_date,statut_presence,date_pointage").order("event_date", { ascending: false }).limit(5000);
+      let query = supabase.from("attendance").select("member_id,department_id,event_date,event_name,statut_presence,justification,date_pointage").order("event_date", { ascending: false }).limit(5000);
       if (!all) query = query.in("department_id", auth.departmentIds);
       const { data, error } = await query;
       if (error) throw error;
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
       if (departments.error) throw departments.error;
       const memberNames = new Map((members.data ?? []).map((item) => [item.id, `${item.member_number} ${item.nom} ${item.postnom} ${item.prenom}`]));
       const deptNames = new Map((departments.data ?? []).map((item) => [item.id, item.name]));
-      content = csv(["Date", "Identifiant et nom", "Département", "Statut"], (data ?? []).map((item) => [item.event_date, memberNames.get(item.member_id), deptNames.get(item.department_id), item.statut_presence]));
+      content = csv(["Date", "Événement", "Identifiant et nom", "Département", "Statut", "Justification"], (data ?? []).map((item) => [item.event_date, item.event_name, memberNames.get(item.member_id), deptNames.get(item.department_id), item.statut_presence, item.justification]));
       filename = "presences.csv";
     } else if (type === "activities") {
       const auth = await requireAnyPermission(request, ["activities.read_all", "activities.read_assigned"]);

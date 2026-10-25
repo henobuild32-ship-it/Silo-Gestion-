@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Activity, ArrowRight, CalendarDays, Check, FilePlus2, Inbox, RefreshCw, Users, UsersRound, UserRoundCog } from "lucide-react";
+import { Activity, ArrowRight, Check, FilePlus2, Inbox, RefreshCw, Users, UsersRound, UserRoundCog } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
 import { apiFetch } from "@/lib/api/client";
 
 type DashboardData = {
-  stats: { members: number; workers: number; visitors: number; leaders: number; pending: number; reviewing: number; needsChanges: number; approved: number; rejected: number; upcomingActivities: number; presentLast30Days: number; absentLast30Days: number };
+  stats: { members: number; workers: number; visitors: number; leaders: number; pending: number; reviewing: number; needsChanges: number; approved: number; rejected: number; upcomingActivities: number; presentLast30Days: number; absentLast30Days: number; justifiedLast30Days: number };
   departments: { id: string; name: string; status: string; active_workers: number }[];
   updatedAt: string;
 };
@@ -40,7 +40,6 @@ export default function DashboardPage() {
         <StatCard label="Membres actifs" value={data?.stats.members ?? 0} note="Fiches individuelles" icon={Users} />
         <StatCard label="Ouvriers" value={data?.stats.workers ?? 0} note="Affectations dans les départements" icon={UsersRound} />
         <StatCard label="En attente" value={data?.stats.pending ?? 0} note="Formulaires à vérifier" icon={Inbox} />
-        <StatCard label="Prochaines activités" value={data?.stats.upcomingActivities ?? 0} note="Événements à venir" icon={CalendarDays} />
       </div>
       <div className="dashboard-grid">
         <section className="card panel">
@@ -62,7 +61,7 @@ export default function DashboardPage() {
           </div>
           <div className="divider" />
           <div className="panel-heading" style={{ marginBottom: 12 }}><h2>Présences · 30 derniers jours</h2><Activity size={17} color="#658775" /></div>
-          <div className="dashboard-stat-row"><div><strong>{data?.stats.presentLast30Days ?? (loading ? "…" : 0)}</strong><div className="field-hint">Présences</div></div><div><strong>{data?.stats.absentLast30Days ?? (loading ? "…" : 0)}</strong><div className="field-hint">Absences</div></div><div><strong>{data?.stats.visitors ?? (loading ? "…" : 0)}</strong><div className="field-hint">Visiteurs</div></div><div><strong>{data?.stats.leaders ?? (loading ? "…" : 0)}</strong><div className="field-hint">Responsables</div></div></div>
+          <div className="dashboard-stat-row"><div><strong>{data?.stats.presentLast30Days ?? (loading ? "…" : 0)}</strong><div className="field-hint">Présences</div></div><div><strong>{data?.stats.absentLast30Days ?? (loading ? "…" : 0)}</strong><div className="field-hint">Absences</div></div><div><strong>{data?.stats.justifiedLast30Days ?? (loading ? "…" : 0)}</strong><div className="field-hint">Justifiées</div></div><div><strong>{data?.stats.visitors ?? (loading ? "…" : 0)}</strong><div className="field-hint">Visiteurs</div></div><div><strong>{data?.stats.leaders ?? (loading ? "…" : 0)}</strong><div className="field-hint">Responsables</div></div></div>
         </section>
       </div>
       <div className="card panel dashboard-note-card" style={{ marginTop: 17, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18 }}>

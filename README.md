@@ -1,16 +1,16 @@
-# SILO GESTION ÉGLISE
+# SILO VERT OUVRIERS
 
-Application de gestion administrative du Centre Évangélique Silo — Campus de la Cité Verte. Interface Next.js/React, PostgreSQL et Supabase, prête à être reliée à Vercel.
+Application de gestion administrative du Centre Évangélique Silo — Campus de la Cité Verte, sous le nom Silo Vert Ouvriers.
 
 ## Fonctionnalités
 
 - Inscription des ouvriers par liens courts `/i/<jeton>` individuels ou généraux, avec validation administrative avant création de la fiche officielle.
 - Fiches uniques, affectations multiples, gestion des départements, comptes et permissions.
-- Présences, activités, rapports CSV imprimables et module financier à permissions restreintes.
+- Présences et rapports administratifs avec accès limité selon les autorisations.
 - Photos conservées dans un bucket Supabase privé. Contrôles d’accès serveur; les clés privilégiées ne sont pas exposées au navigateur.
 - Application installable (PWA), interface adaptée en priorité au téléphone, page Présences disponible hors ligne après une première ouverture et synchronisation différée des pointages.
 - Notifications Web Push pour les nouvelles inscriptions; l’utilisateur les active depuis son compte sur chaque appareil.
-- Un seul compte `super_admin` peut exister. Il est créé une fois depuis `/initial-admin`; les comptes suivants sont secrétariat ou responsables de département.
+- Un seul compte `super_admin` peut exister. Il est créé une fois depuis `/initial-admin`. La création de comptes secondaires est actuellement suspendue.
 
 ## Déploiement
 
@@ -24,13 +24,13 @@ npx supabase link --project-ref llwzdaqsdfcltqkncjhl
 npx supabase db push
 ```
 
-La commande `link` demande le mot de passe PostgreSQL dans le terminal. Ne l’écrivez pas dans un fichier suivi par Git, une commande copiée dans un journal, ou une variable `NEXT_PUBLIC_*`. Les migrations créent les treize départements, les tables, les contraintes, les fonctions transactionnelles, les politiques RLS et le bucket privé des photos.
+La commande `link` demande le mot de passe de la base dans le terminal. Ne l’écrivez pas dans un fichier suivi par Git, une commande copiée dans un journal, ou une variable publique. Les migrations créent les treize départements, les données et les permissions de l’application. Les migrations 004 et 005 ajoutent les liens personnels de correction et les événements et justifications de présence. Pour appliquer ces deux mises à jour à la base déjà installée, exécutez une fois [`supabase/sql-editor-update.sql`](supabase/sql-editor-update.sql) dans l’éditeur SQL. Le fichier `sql-editor-setup.sql` est réservé à une installation neuve.
 
-Pour tout appliquer depuis le tableau de bord Supabase, ouvrez **SQL Editor**, collez le contenu de [`supabase/sql-editor-setup.sql`](supabase/sql-editor-setup.sql), puis exécutez-le une seule fois dans un projet vierge. Le script regroupe les trois migrations et s’arrête si `public.profiles` existe déjà. L’exécution manuelle ne met pas à jour l’historique local du CLI; pour la suite, utilisez le même SQL Editor ou réparez l’historique des migrations avant de reprendre `supabase db push`.
+Pour tout appliquer depuis le tableau de bord Supabase, ouvrez **SQL Editor**, collez le contenu de [`supabase/sql-editor-setup.sql`](supabase/sql-editor-setup.sql), puis exécutez-le une seule fois dans un projet vierge. Le script regroupe les migrations et s’arrête si `public.profiles` existe déjà. L’exécution manuelle ne met pas à jour l’historique local du CLI; pour la suite, utilisez le même SQL Editor ou réparez l’historique des migrations avant de reprendre `supabase db push`.
 
 ### 2. Relier GitHub à Vercel
 
-Dans Vercel, importer le dépôt `henobuild32-ship-it/Silo-Gestion-` et conserver le framework Next.js détecté. Ajouter les variables suivantes pour les environnements souhaités :
+Dans Vercel, importer le dépôt `henobuild32-ship-it/Silo-Gestion-`, renommer le projet `silo-vert-ouvriers` et conserver le framework détecté. L’URL de production souhaitée est `https://silo-vert-ouvriers.vercel.app`. Ajouter les variables suivantes pour les environnements souhaités :
 
 | Variable | Valeur |
 | --- | --- |
@@ -51,7 +51,7 @@ La page des présences conserve localement, pendant 30 jours maximum, la derniè
 
 Ouvrir `https://<votre-domaine-vercel>/initial-admin`, saisir le secret `INITIAL_ADMIN_SETUP_KEY`, puis créer le compte principal. L’opération est atomique face aux créations simultanées : l’index unique PostgreSQL interdit un second administrateur principal. Conserver le secret initial en lieu sûr; une fois le compte créé, la page ne peut pas créer un autre `super_admin`.
 
-Depuis **Administration des comptes**, l’administrateur principal pourra créer des comptes de secrétariat et de responsables, et leur attribuer des autorisations et des départements.
+Après l’initialisation, la création de comptes Secrétariat et Responsables est suspendue. Les comptes existants peuvent être consultés et leurs autorisations ajustées.
 
 ## Développement local
 
