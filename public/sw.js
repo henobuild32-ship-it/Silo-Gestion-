@@ -1,4 +1,4 @@
-const VERSION = "silo-vert-ouvriers-v3";
+const VERSION = "silo-vert-ouvriers-v4";
 const SAFE_PAGES = new Set([
   "/", "/connexion", "/offline", "/dashboard", "/admin/activities",
   "/admin/attendance", "/admin/audit", "/admin/departments", "/admin/finances",
@@ -11,14 +11,17 @@ self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(VERSION);
     await Promise.all(CORE.map((url) => cache.add(url).catch(() => undefined)));
-    await self.skipWaiting();
   })());
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") void self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const names = await caches.keys();
-    await Promise.all(names.filter((name) => name.startsWith("silo-pwa-") && name !== VERSION).map((name) => caches.delete(name)));
+    await Promise.all(names.filter((name) => name.startsWith("silo-vert-ouvriers-") && name !== VERSION).map((name) => caches.delete(name)));
     await self.clients.claim();
   })());
 });

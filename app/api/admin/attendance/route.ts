@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     if (!departmentIds.length) return NextResponse.json({ rows: [], departments: [], members: [] }, { headers: { "Cache-Control": "no-store" } });
 
     const [attendanceResult, assignmentResult, workersResult] = await Promise.all([
-      supabase.from("attendance").select("id,member_id,department_id,activity_id,event_date,event_name,statut_presence,justification,date_pointage,recorded_by")
+      supabase.from("attendance").select("id,member_id,department_id,activity_id,event_date,event_name,statut_presence,justification,self_confirmed_at,date_pointage,recorded_by")
         .in("department_id", departmentIds).order("event_date", { ascending: false }).order("event_name").limit(500),
       supabase.from("member_departments").select("member_id,department_id").in("department_id", departmentIds).eq("status", "active"),
       supabase.from("member_categories").select("member_id").eq("category", "worker"),
