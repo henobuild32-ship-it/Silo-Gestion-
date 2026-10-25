@@ -63,11 +63,11 @@ export async function sendAttendanceOtp(email: string, code: string, eventName: 
   const safeDate = escapeHtml(dateLabel);
   try {
     await transporter.sendMail({
-      from: { name: "Silo Vert Ouvriers", address: process.env.SMTP_FROM?.trim() || username },
+      from: { name: process.env.SMTP_FROM_NAME?.trim() || "Silo Vert", address: process.env.SMTP_FROM?.trim() || username },
       to: email,
-      subject: "Code de confirmation de présence — Silo Vert Ouvriers",
+      subject: "Code de confirmation de présence — Silo Vert",
       text: `Votre code de confirmation pour « ${eventName} » (${dateLabel}) est ${code}. Il expire dans 10 minutes. Ne partagez ce code avec personne. Si vous n'avez pas demandé ce code, ignorez ce message.`,
-      html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#17251d"><div style="padding:22px;background:#153c2b;color:#fff;border-radius:12px 12px 0 0"><strong>SILO VERT OUVRIERS</strong><div style="margin-top:8px;font-size:13px">Centre Évangélique Silo · Campus de la Cité Verte</div></div><div style="padding:24px;border:1px solid #e3e9e5;border-top:0;border-radius:0 0 12px 12px"><p>Code de confirmation pour <strong>${safeEvent}</strong>, le ${safeDate} :</p><div style="font-size:32px;font-weight:700;letter-spacing:8px;background:#f3f7f4;padding:16px;text-align:center;border-radius:8px">${code}</div><p>Ce code expire dans 10 minutes. Ne le partagez avec personne.</p><p style="font-size:12px;color:#65736b">Si vous n'avez pas demandé ce code, ignorez ce message.</p></div></div>`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#17251d"><div style="padding:22px;background:#153c2b;color:#fff;border-radius:12px 12px 0 0"><strong>SILO VERT</strong><div style="margin-top:8px;font-size:13px">Centre Évangélique Silo · Campus de la Cité Verte</div></div><div style="padding:24px;border:1px solid #e3e9e5;border-top:0;border-radius:0 0 12px 12px"><p>Code de confirmation pour <strong>${safeEvent}</strong>, le ${safeDate} :</p><div style="font-size:32px;font-weight:700;letter-spacing:8px;background:#f3f7f4;padding:16px;text-align:center;border-radius:8px">${code}</div><p>Ce code expire dans 10 minutes. Ne le partagez avec personne.</p><p style="font-size:12px;color:#65736b">Si vous n'avez pas demandé ce code, ignorez ce message.</p></div></div>`,
     });
   } finally {
     transporter.close();

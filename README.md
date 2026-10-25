@@ -45,7 +45,7 @@ Dans Vercel, importer le dépôt `henobuild32-ship-it/Silo-Gestion-`, renommer l
 | `SMTP_USER` | Adresse Gmail utilisée pour envoyer les codes de confirmation des réunions |
 | `SMTP_APP_PASSWORD` | Mot de passe d’application Gmail, pas le mot de passe habituel du compte |
 | `ATTENDANCE_OTP_SECRET` | Secret aléatoire serveur d’au moins 32 caractères pour protéger les codes OTP |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM` | Facultatifs ; par défaut Gmail SMTP sur le port 465 et l’adresse `SMTP_USER` |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_FROM_NAME` | Facultatifs ; par défaut Gmail SMTP sur le port 465, l’adresse `SMTP_USER` et le nom d’expéditeur `Silo Vert` |
 
 Redéployer après avoir enregistré les variables. Les clés VAPID sont générées automatiquement dans le `.env` local; recopier leurs valeurs dans les variables Vercel. Il n’est pas nécessaire de configurer `DATABASE_URL` pour l’application : les requêtes utilisent l’API Supabase. La clé serveur ne doit jamais recevoir le préfixe `NEXT_PUBLIC_`.
 
