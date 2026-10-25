@@ -1,11 +1,11 @@
-const VERSION = "silo-pwa-v1";
+const VERSION = "silo-pwa-v2";
 const SAFE_PAGES = new Set([
   "/", "/connexion", "/offline", "/dashboard", "/admin/activities",
   "/admin/attendance", "/admin/audit", "/admin/departments", "/admin/finances",
   "/admin/members", "/admin/registration-links", "/admin/reports",
   "/admin/settings", "/admin/submissions",
 ]);
-const CORE = ["/", "/connexion", "/offline", "/admin/attendance", "/icon.svg", "/manifest.webmanifest"];
+const CORE = ["/", "/connexion", "/offline", "/admin/attendance", "/silo-logo.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
@@ -63,8 +63,8 @@ self.addEventListener("push", (event) => {
   const target = typeof message.url === "string" && message.url.startsWith("/") && !message.url.startsWith("//") ? message.url : "/dashboard";
   event.waitUntil(self.registration.showNotification(message.title, {
     body: message.body,
-    icon: "/icon.svg",
-    badge: "/icon.svg",
+    icon: "/silo-logo.png",
+    badge: "/silo-logo.png",
     tag: message.tag || "silo-notification",
     data: { url: target },
     renotify: false,

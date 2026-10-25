@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   applicationName: "SILO Gestion Église",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "SILO" },
   formatDetection: { telephone: false },
+  icons: { icon: "/silo-logo.png", apple: "/silo-logo.png" },
 };
 
 export const viewport = {

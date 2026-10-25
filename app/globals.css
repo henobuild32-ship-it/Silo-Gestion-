@@ -83,6 +83,9 @@ input,select,textarea,button{touch-action:manipulation}
 .offline-card{width:min(100%,460px);padding:28px;display:grid;justify-items:start;gap:13px}
 .offline-card .logo-mark{margin-bottom:8px}
 .offline-card p{color:var(--muted);line-height:1.6}
+.church-logo{display:block;flex:none;object-fit:cover;overflow:hidden;border:1px solid #ffffff55;border-radius:14px;background:#17203a;box-shadow:0 7px 18px rgba(23,32,58,.18)}
+.sidebar-brand .church-logo{border-radius:11px}
+.landing-hero-logo{border-radius:28px;box-shadow:0 24px 55px rgba(23,32,58,.28)}
 @media(max-width:760px){
   .admin-main{padding-bottom:calc(66px + env(safe-area-inset-bottom))}
   .sidebar{padding-top:calc(23px + env(safe-area-inset-top))}

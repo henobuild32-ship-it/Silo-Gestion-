@@ -26,6 +26,8 @@ npx supabase db push
 
 La commande `link` demande le mot de passe PostgreSQL dans le terminal. Ne l’écrivez pas dans un fichier suivi par Git, une commande copiée dans un journal, ou une variable `NEXT_PUBLIC_*`. Les migrations créent les treize départements, les tables, les contraintes, les fonctions transactionnelles, les politiques RLS et le bucket privé des photos.
 
+Pour tout appliquer depuis le tableau de bord Supabase, ouvrez **SQL Editor**, collez le contenu de [`supabase/sql-editor-setup.sql`](supabase/sql-editor-setup.sql), puis exécutez-le une seule fois dans un projet vierge. Le script regroupe les trois migrations et s’arrête si `public.profiles` existe déjà. L’exécution manuelle ne met pas à jour l’historique local du CLI; pour la suite, utilisez le même SQL Editor ou réparez l’historique des migrations avant de reprendre `supabase db push`.
+
 ### 2. Relier GitHub à Vercel
 
 Dans Vercel, importer le dépôt `henobuild32-ship-it/Silo-Gestion-` et conserver le framework Next.js détecté. Ajouter les variables suivantes pour les environnements souhaités :

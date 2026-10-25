@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { ChurchLogo } from "@/components/church-logo";
 
 export default function InitialAdminPage() {
   const [values, setValues] = useState({ fullName: "", email: "", password: "", setupKey: "" });
@@ -26,7 +27,7 @@ export default function InitialAdminPage() {
   return <main className="public-wrap" style={{ display: "grid", alignItems: "start" }}>
     <div className="auth-card">
       <Link href="/connexion" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--muted)", fontSize: 12 }}><ArrowLeft size={14} /> Retour à la connexion</Link>
-      <div style={{ marginTop: 24 }} className="logo-mark">S</div>
+      <div style={{ marginTop: 24 }}><ChurchLogo size={68} /></div>
       <h1>Première installation</h1>
       <p>Créez le compte de l’administrateur principal. La base de données n’acceptera qu’un seul compte avec ce rôle.</p>
       <form onSubmit={submit} className="auth-fields">

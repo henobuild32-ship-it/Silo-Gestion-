@@ -10,6 +10,7 @@ import {
 import { apiFetch } from "@/lib/api/client";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
 import { clearOfflineUserData } from "@/lib/offline-store";
+import { ChurchLogo } from "@/components/church-logo";
 
 type UserInfo = { userId: string; fullName: string; email: string; role: string; permissions: string[] };
 const nav = [
@@ -140,14 +141,14 @@ export function AdminShell({ children, title }: { children: React.ReactNode; tit
   }
 
   if (loading) return <div className="page-loading"><div className="spinner" /></div>;
-  if (configError) return <div className="auth-card"><div className="logo-mark">S</div><h1>Accès à l’espace indisponible</h1><p>{configError}</p><a href="/connexion" className="button">Revenir à la connexion</a></div>;
+  if (configError) return <div className="auth-card"><ChurchLogo size={54} /><h1>Accès à l’espace indisponible</h1><p>{configError}</p><a href="/connexion" className="button">Revenir à la connexion</a></div>;
   if (!user) return <div className="page-loading"><div className="spinner" /></div>;
 
   return (
     <div className="admin-layout">
       <button className={`mobile-overlay ${menuOpen ? "open" : ""}`} aria-label="Fermer le menu" onClick={() => setMenuOpen(false)} />
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
-        <div className="sidebar-brand"><div className="logo-mark">S</div><div><div className="brand-title">SILO GESTION</div><div className="brand-subtitle">Centre Évangélique Silo</div></div></div>
+        <div className="sidebar-brand"><ChurchLogo size={40} className="sidebar-logo" /><div><div className="brand-title">SILO GESTION</div><div className="brand-subtitle">Centre Évangélique Silo</div></div></div>
         {visibleNav.map((item, index) => {
           const Icon = item.icon;
           return <div key={item.href}>

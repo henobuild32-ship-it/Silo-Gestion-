@@ -14,7 +14,7 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#173b32",
     categories: ["business", "productivity"],
     icons: [
-      { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
+      { src: "/silo-logo.png", sizes: "474x474", type: "image/png", purpose: "any" },
     ],
   };
 }

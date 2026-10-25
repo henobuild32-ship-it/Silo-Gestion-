@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, LockKeyhole } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
+import { ChurchLogo } from "@/components/church-logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,7 +29,7 @@ export default function LoginPage() {
   return <main className="public-wrap" style={{ display: "grid", alignItems: "start" }}>
     <div className="auth-card">
       <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--muted)", fontSize: 12 }}><ArrowLeft size={14} /> Accueil</Link>
-      <div style={{ marginTop: 24 }} className="logo-mark">S</div>
+      <div style={{ marginTop: 24 }}><ChurchLogo size={68} /></div>
       <h1>Bienvenue dans votre espace</h1>
       <p>Connectez-vous avec le compte fourni par l’administration du Centre Évangélique Silo.</p>
       <form onSubmit={submit} className="auth-fields">

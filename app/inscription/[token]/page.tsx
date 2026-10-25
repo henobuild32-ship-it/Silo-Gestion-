@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { useParams } from "next/navigation";
 import { Camera, CheckCircle2, ChevronLeft, ChevronRight, Church, ImagePlus, LockKeyhole, Trash2, UserRound, UsersRound } from "lucide-react";
+import { ChurchLogo } from "@/components/church-logo";
 
 type Department = { id: string; name: string };
 type Values = Record<string, string>;
@@ -160,7 +161,7 @@ export default function WorkerRegistrationPage() {
 }
 
 function Header() {
-  return <header className="public-header"><div className="logo-mark">S</div><div><div className="brand-title">CENTRE ÉVANGÉLIQUE SILO</div><div className="brand-subtitle">Campus de la Cité Verte</div></div></header>;
+  return <header className="public-header"><ChurchLogo size={58} /><div><div className="brand-title">CENTRE ÉVANGÉLIQUE SILO</div><div className="brand-subtitle">Campus de la Cité Verte</div></div></header>;
 }
 function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return <div className="field"><label>{label}{required && <> <span className="required">*</span></>}</label>{children}</div>;
