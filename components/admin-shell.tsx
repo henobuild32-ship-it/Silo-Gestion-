@@ -92,9 +92,6 @@ export function AdminShell({ children, title }: { children: React.ReactNode; tit
   async function togglePush() {
     setPushMessage("");
     if (pushBusy) return;
-    if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
-      setPushMessage("Les notifications ne sont pas prises en charge par ce navigateur."); return;
-    }
     if (pushEnabled) {
       setPushBusy(true);
       try {
@@ -115,7 +112,16 @@ export function AdminShell({ children, title }: { children: React.ReactNode; tit
     const onIos = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const installed = window.matchMedia("(display-mode: standalone)").matches || ("standalone" in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
     if (onIos && !installed) {
-      setPushMessage("Sur iPhone/iPad, ajoutez d’abord SILO à l’écran d’accueil, puis ouvrez l’application installée."); return;
+      setPushMessage("Sur iPhone/iPad, utilisez iOS/iPadOS 16.4 ou plus récent : dans Safari, touchez Partager → Ajouter à l’écran d’accueil, puis activez les notifications depuis l’application installée."); return;
+    }
+    if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      const safari = /Safari/i.test(navigator.userAgent) && !/Chrome|CriOS|Edg|FxiOS|Firefox/i.test(navigator.userAgent);
+      setPushMessage(onIos
+        ? "Web Push sur iPhone/iPad nécessite iOS/iPadOS 16.4 ou plus récent et l’application ajoutée à l’écran d’accueil."
+        : safari
+          ? "Web Push nécessite Safari 16 ou plus récent sur macOS Ventura (13) ou une version plus récente de macOS."
+          : "Les notifications Web Push ne sont pas prises en charge par cette version du navigateur.");
+      return;
     }
     if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
       setPushMessage("La clé publique Web Push manque dans la configuration du déploiement."); return;

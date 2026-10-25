@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { errorResponse, validationResponse } from "@/lib/api/respond";
 import { registrationSchema } from "@/lib/validation/registration";
+import { registrationTokenPattern } from "@/lib/registration-token";
 import { sendPushToUsers } from "@/lib/push";
 
 export const runtime = "nodejs";
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
     if (String(form.get("website") ?? "").trim()) return validationResponse("Soumission invalide.", 400);
     const token = String(form.get("token") ?? "");
     const requestId = String(form.get("requestId") ?? "");
-    if (!/^[A-Za-z0-9_-]{35,60}$/.test(token) || !/^[0-9a-f-]{36}$/i.test(requestId)) {
+    if (!registrationTokenPattern.test(token) || !/^[0-9a-f-]{36}$/i.test(requestId)) {
       return validationResponse("Lien ou référence de soumission invalide.", 400);
     }
     const departmentValue = form.get("departments");

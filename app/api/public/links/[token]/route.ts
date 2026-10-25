@@ -2,13 +2,14 @@ import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { errorResponse } from "@/lib/api/respond";
+import { registrationTokenPattern } from "@/lib/registration-token";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
     const { token } = await params;
-    if (!/^[A-Za-z0-9_-]{35,60}$/.test(token)) return NextResponse.json({ error: "Ce lien d’inscription est invalide." }, { status: 404 });
+    if (!registrationTokenPattern.test(token)) return NextResponse.json({ error: "Ce lien d’inscription est invalide." }, { status: 404 });
     const tokenHash = createHash("sha256").update(token).digest("hex");
     const supabase = getSupabaseAdmin();
     const { data: link, error } = await supabase.from("registration_links")

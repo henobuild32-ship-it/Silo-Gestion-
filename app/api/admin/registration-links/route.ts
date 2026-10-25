@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       if (error) throw error;
       if (!member) return validationResponse("Cette fiche n’existe pas.", 404);
     }
-    const rawToken = randomBytes(32).toString("base64url");
+    const rawToken = randomBytes(16).toString("base64url");
     const expiresAt = parsed.data.expiresInHours
       ? new Date(Date.now() + parsed.data.expiresInHours * 3600000).toISOString()
       : null;
@@ -54,8 +54,14 @@ export async function POST(request: NextRequest) {
       label: parsed.data.label || null,
     }).select("id, link_type, status, created_at, expires_at, usage_count, usage_limit, label").single();
     if (error) throw error;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
-    const url = `${appUrl.replace(/\/$/, "")}/inscription/${rawToken}`;
+    const publicAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+    const vercelProductionHost = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    const vercelHost = process.env.VERCEL_URL;
+    const appUrl = publicAppUrl?.startsWith("https://")
+      ? publicAppUrl
+      : vercelProductionHost ? `https://${vercelProductionHost}`
+        : vercelHost ? `https://${vercelHost}` : new URL(request.url).origin;
+    const url = `${appUrl.replace(/\/$/, "")}/i/${rawToken}`;
     await supabase.from("audit_logs").insert({
       user_id: auth.userId, action: "registration_link.created", object_type: "registration_link", object_id: link.id,
     });

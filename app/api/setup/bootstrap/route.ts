@@ -6,6 +6,19 @@ import { errorResponse, validationResponse } from "@/lib/api/respond";
 
 export const runtime = "nodejs";
 
+export async function GET() {
+  try {
+    const { data, error } = await getSupabaseAdmin().from("profiles")
+      .select("id").eq("role", "super_admin").limit(1);
+    if (error) throw error;
+    return NextResponse.json({ initialized: Boolean(data?.length) }, {
+      headers: { "Cache-Control": "no-store, max-age=0" },
+    });
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const parsed = bootstrapSchema.safeParse(await request.json());

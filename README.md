@@ -4,7 +4,7 @@ Application de gestion administrative du Centre Évangélique Silo — Campus de
 
 ## Fonctionnalités
 
-- Inscription des ouvriers par liens individuels ou généraux, avec validation administrative avant création de la fiche officielle.
+- Inscription des ouvriers par liens courts `/i/<jeton>` individuels ou généraux, avec validation administrative avant création de la fiche officielle.
 - Fiches uniques, affectations multiples, gestion des départements, comptes et permissions.
 - Présences, activités, rapports CSV imprimables et module financier à permissions restreintes.
 - Photos conservées dans un bucket Supabase privé. Contrôles d’accès serveur; les clés privilégiées ne sont pas exposées au navigateur.
@@ -45,7 +45,7 @@ Dans Vercel, importer le dépôt `henobuild32-ship-it/Silo-Gestion-` et conserve
 
 Redéployer après avoir enregistré les variables. Les clés VAPID sont générées automatiquement dans le `.env` local; recopier leurs valeurs dans les variables Vercel. Il n’est pas nécessaire de configurer `DATABASE_URL` pour l’application : les requêtes utilisent l’API Supabase. La clé serveur ne doit jamais recevoir le préfixe `NEXT_PUBLIC_`.
 
-La page des présences conserve localement, pendant 30 jours maximum, la dernière liste autorisée et les pointages en attente dans IndexedDB. Ils sont envoyés quand la connexion revient et effacés à la déconnexion. Les appels API ne sont jamais mis en cache. Les notifications nécessitent une autorisation explicite sur chaque appareil et une connexion HTTPS. Sur iPhone/iPad, l’application doit être ajoutée à l’écran d’accueil puis ouverte depuis cette icône pour demander l’autorisation Web Push.
+La page des présences conserve localement, pendant 30 jours maximum, la dernière liste autorisée et les pointages en attente dans IndexedDB. Ils sont envoyés quand la connexion revient et effacés à la déconnexion. Les appels API ne sont jamais mis en cache. Les notifications Web Push nécessitent une autorisation explicite sur chaque appareil et une connexion HTTPS. Elles fonctionnent dans Safari 16+ sur macOS Ventura 13+; sur iPhone/iPad, il faut iOS/iPadOS 16.4+ et ajouter l’application à l’écran d’accueil avant d’activer les notifications.
 
 ### 3. Créer l’administrateur principal
 
