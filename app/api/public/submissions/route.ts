@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { errorResponse, validationResponse } from "@/lib/api/respond";
 import { registrationSchema } from "@/lib/validation/registration";
+import { sendPushToUsers } from "@/lib/push";
 
 export const runtime = "nodejs";
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
@@ -90,6 +91,28 @@ export async function POST(request: NextRequest) {
         return validationResponse("Ce lien est expiré ou a atteint sa limite d’utilisation.", 410);
       }
       throw submitError;
+    }
+    try {
+      const [admins, readers] = await Promise.all([
+        supabase.from("profiles").select("id").eq("role", "super_admin").eq("status", "active"),
+        supabase.from("profile_permissions").select("profile_id").eq("permission_key", "submissions.read"),
+      ]);
+      if (admins.error) throw admins.error;
+      if (readers.error) throw readers.error;
+      const readerIds = [...new Set((readers.data ?? []).map((profile) => profile.profile_id))];
+      const { data: activeReaders, error: activeError } = readerIds.length
+        ? await supabase.from("profiles").select("id").in("id", readerIds).eq("status", "active")
+        : { data: [], error: null };
+      if (activeError) throw activeError;
+      const recipients = [...new Set([...(admins.data ?? []).map((profile) => profile.id), ...(activeReaders ?? []).map((profile) => profile.id)])];
+      await sendPushToUsers(recipients, {
+        title: "Nouveau formulaire d’ouvrier",
+        body: `Un dossier ${result.reference_number} attend une vérification.`,
+        url: "/admin/submissions",
+        tag: `submission-${result.reference_number}`,
+      });
+    } catch (pushError) {
+      console.error("Notification de nouvelle inscription non délivrée", pushError instanceof Error ? pushError.message : "erreur inconnue");
     }
     return NextResponse.json({ reference: result.reference_number }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {

@@ -8,6 +8,8 @@ Application de gestion administrative du Centre Évangélique Silo — Campus de
 - Fiches uniques, affectations multiples, gestion des départements, comptes et permissions.
 - Présences, activités, rapports CSV imprimables et module financier à permissions restreintes.
 - Photos conservées dans un bucket Supabase privé. Contrôles d’accès serveur; les clés privilégiées ne sont pas exposées au navigateur.
+- Application installable (PWA), interface adaptée en priorité au téléphone, page Présences disponible hors ligne après une première ouverture et synchronisation différée des pointages.
+- Notifications Web Push pour les nouvelles inscriptions; l’utilisateur les active depuis son compte sur chaque appareil.
 - Un seul compte `super_admin` peut exister. Il est créé une fois depuis `/initial-admin`; les comptes suivants sont secrétariat ou responsables de département.
 
 ## Déploiement
@@ -35,8 +37,13 @@ Dans Vercel, importer le dépôt `henobuild32-ship-it/Silo-Gestion-` et conserve
 | `SUPABASE_SECRET_KEY` | Clé `secret` Supabase côté serveur (ou variable héritée `SUPABASE_SERVICE_ROLE_KEY`) |
 | `INITIAL_ADMIN_SETUP_KEY` | Secret aléatoire d’au moins 32 caractères, à conserver pour l’installation initiale |
 | `NEXT_PUBLIC_APP_URL` | URL de production de l’application Vercel, sans `/` final |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Clé publique Web Push créée localement |
+| `VAPID_PRIVATE_KEY` | Clé privée Web Push (serveur uniquement, jamais `NEXT_PUBLIC_`) |
+| `VAPID_SUBJECT` | Adresse `mailto:` de contact ou URL HTTPS de l’application |
 
-Redéployer après avoir enregistré les variables. Il n’est pas nécessaire de configurer `DATABASE_URL` pour l’application : les requêtes utilisent l’API Supabase. La clé serveur ne doit jamais recevoir le préfixe `NEXT_PUBLIC_`.
+Redéployer après avoir enregistré les variables. Les clés VAPID sont générées automatiquement dans le `.env` local; recopier leurs valeurs dans les variables Vercel. Il n’est pas nécessaire de configurer `DATABASE_URL` pour l’application : les requêtes utilisent l’API Supabase. La clé serveur ne doit jamais recevoir le préfixe `NEXT_PUBLIC_`.
+
+La page des présences conserve localement, pendant 30 jours maximum, la dernière liste autorisée et les pointages en attente dans IndexedDB. Ils sont envoyés quand la connexion revient et effacés à la déconnexion. Les appels API ne sont jamais mis en cache. Les notifications nécessitent une autorisation explicite sur chaque appareil et une connexion HTTPS. Sur iPhone/iPad, l’application doit être ajoutée à l’écran d’accueil puis ouverte depuis cette icône pour demander l’autorisation Web Push.
 
 ### 3. Créer l’administrateur principal
 
@@ -46,7 +53,7 @@ Depuis **Administration des comptes**, l’administrateur principal pourra crée
 
 ## Développement local
 
-1. Copier `.env.example` vers `.env.local` et remplir les clés récupérées dans Supabase.
+1. Copier `.env.example` vers `.env` et remplir les clés récupérées dans Supabase.
 2. Installer les dépendances avec `npm install`.
 3. Lancer `npm run dev` puis ouvrir `http://localhost:3000`.
 

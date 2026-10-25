@@ -4,13 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Activity, CalendarDays, ChartNoAxesCombined, ClipboardList, Coins, DoorOpen,
+  Activity, Bell, BellOff, CalendarDays, ChartNoAxesCombined, ClipboardList, Coins, DoorOpen,
   FileCheck2, LayoutDashboard, Menu, Settings2, ShieldCheck, Users, UsersRound,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api/client";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
+import { clearOfflineUserData } from "@/lib/offline-store";
 
-type UserInfo = { fullName: string; email: string; role: string; permissions: string[] };
+type UserInfo = { userId: string; fullName: string; email: string; role: string; permissions: string[] };
 const nav = [
   { label: "Vue d’ensemble", href: "/dashboard", icon: LayoutDashboard, permission: "dashboard.read", section: "ESPACE" },
   { label: "Formulaires reçus", href: "/admin/submissions", icon: FileCheck2, permission: "submissions.read" },
@@ -33,6 +34,9 @@ export function AdminShell({ children, title }: { children: React.ReactNode; tit
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [configError, setConfigError] = useState("");
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushMessage, setPushMessage] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -46,12 +50,93 @@ export function AdminShell({ children, title }: { children: React.ReactNode; tit
     return () => { mounted = false; };
   }, [router]);
 
+  useEffect(() => {
+    if (!user || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    let active = true;
+    void navigator.serviceWorker.ready.then((registration) => registration.pushManager.getSubscription()).then((subscription) => {
+      if (active) setPushEnabled(Boolean(subscription));
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [user]);
+
   const visibleNav = useMemo(() => nav.filter((item) => user?.role === "super_admin" || user?.permissions.includes(item.permission) || ("alternate" in item && item.alternate !== undefined && user?.permissions.includes(item.alternate)) || ("anyOf" in item && item.anyOf?.some((permission) => user?.permissions.includes(permission)))), [user]);
   const initials = (user?.fullName ?? "S").split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 
   async function signOut() {
+    const currentUser = user;
+    if (!currentUser) return;
+    try {
+      const registration = await navigator.serviceWorker?.getRegistration();
+      const subscription = await registration?.pushManager.getSubscription();
+      if (subscription) {
+        try { await apiFetch("/api/admin/push/subscribe", { method: "DELETE", body: JSON.stringify({ endpoint: subscription.endpoint }) }); } catch { /* logout must still work offline */ }
+        await subscription.unsubscribe();
+      }
+    } catch { /* best effort cleanup on shared devices */ }
+    try { await clearOfflineUserData(currentUser.userId); } catch { /* IndexedDB may be unavailable. */ }
+    localStorage.removeItem("silo-offline-user-id");
     await getSupabaseBrowser().auth.signOut();
     router.replace("/connexion");
+  }
+
+  function urlBase64ToArrayBuffer(value: string): ArrayBuffer {
+    const padding = "=".repeat((4 - value.length % 4) % 4);
+    const raw = atob((value + padding).replace(/-/g, "+").replace(/_/g, "/"));
+    const bytes = Uint8Array.from(raw, (character) => character.charCodeAt(0));
+    const buffer = new ArrayBuffer(bytes.length);
+    new Uint8Array(buffer).set(bytes);
+    return buffer;
+  }
+
+  async function togglePush() {
+    setPushMessage("");
+    if (pushBusy) return;
+    if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      setPushMessage("Les notifications ne sont pas prises en charge par ce navigateur."); return;
+    }
+    if (pushEnabled) {
+      setPushBusy(true);
+      try {
+        const subscription = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+        if (subscription) {
+          await apiFetch("/api/admin/push/subscribe", { method: "DELETE", body: JSON.stringify({ endpoint: subscription.endpoint }) });
+          await subscription.unsubscribe();
+        }
+        setPushEnabled(false); setPushMessage("Notifications désactivées sur cet appareil.");
+      } catch { setPushMessage("Impossible de désactiver les notifications. Réessayez lorsque vous êtes connecté."); }
+      finally { setPushBusy(false); }
+      return;
+    }
+
+    if (Notification.permission === "denied") {
+      setPushMessage("Les notifications sont bloquées dans les réglages de ce navigateur."); return;
+    }
+    const onIos = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const installed = window.matchMedia("(display-mode: standalone)").matches || ("standalone" in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
+    if (onIos && !installed) {
+      setPushMessage("Sur iPhone/iPad, ajoutez d’abord SILO à l’écran d’accueil, puis ouvrez l’application installée."); return;
+    }
+    if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
+      setPushMessage("La clé publique Web Push manque dans la configuration du déploiement."); return;
+    }
+    // Must be called directly from the button gesture, especially on iOS.
+    const permissionRequest = Notification.requestPermission();
+    setPushBusy(true);
+    try {
+      const permission = await permissionRequest;
+      if (permission !== "granted") { setPushMessage("Autorisez les notifications pour les recevoir même lorsque l’application est fermée."); return; }
+      const registration = await navigator.serviceWorker.ready;
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToArrayBuffer(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) });
+      await apiFetch("/api/admin/push/subscribe", { method: "POST", body: JSON.stringify(subscription) });
+      setPushEnabled(true); setPushMessage("Notifications activées sur cet appareil.");
+      try {
+        const result = await apiFetch<{ sent: number }>("/api/admin/push/test", { method: "POST" });
+        if (result.sent > 0) setPushMessage("Notifications activées. Une notification de vérification vient d’être envoyée.");
+      } catch { /* subscription succeeded; the test message is optional */ }
+    } catch (error) {
+      setPushMessage(error instanceof Error ? error.message : "Impossible d’activer les notifications.");
+    } finally { setPushBusy(false); }
   }
 
   if (loading) return <div className="page-loading"><div className="spinner" /></div>;
@@ -84,9 +169,16 @@ export function AdminShell({ children, title }: { children: React.ReactNode; tit
             <button className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Ouvrir le menu"><Menu size={21} /></button>
             <div className="topbar-title">{title}</div>
           </div>
-          <div className="topbar-right"><span className="topbar-date"><ShieldCheck size={15} color="#4e806e" /> Espace sécurisé</span><span>{new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}</span></div>
+          <div className="topbar-right"><button className={`push-toggle ${pushEnabled ? "enabled" : ""}`} onClick={() => void togglePush()} disabled={pushBusy} title={pushEnabled ? "Désactiver les notifications" : "Activer les notifications"} aria-label={pushEnabled ? "Désactiver les notifications" : "Activer les notifications"}>{pushEnabled ? <Bell size={16} /> : <BellOff size={16} />}<span>{pushBusy ? "…" : pushEnabled ? "Notifications activées" : "Activer notifications"}</span></button><span className="topbar-date"><ShieldCheck size={15} color="#4e806e" /> Espace sécurisé</span><span>{new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}</span></div>
         </header>
+        {pushMessage && <div className="push-message" role="status"><span>{pushMessage}</span><button onClick={() => setPushMessage("")} aria-label="Fermer">×</button></div>}
         {children}
+        <nav className="mobile-quick-nav" aria-label="Navigation principale">
+          {visibleNav.filter((item) => ["/dashboard", "/admin/members", "/admin/attendance", "/admin/activities"].includes(item.href)).slice(0, 4).map((item) => {
+            const Icon = item.icon;
+            return <Link key={item.href} href={item.href} className={pathname === item.href ? "active" : ""}><Icon size={19} /><span>{item.label === "Vue d’ensemble" ? "Accueil" : item.label === "Membres & ouvriers" ? "Membres" : item.label}</span></Link>;
+          })}
+        </nav>
       </main>
     </div>
   );
